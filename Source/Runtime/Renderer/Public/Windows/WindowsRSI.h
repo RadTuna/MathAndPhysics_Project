@@ -9,24 +9,27 @@ public:
 	~WindowsRSI();
 
 public:
-	virtual bool Init(const ScreenPoint& InScreenSize) override;
-	virtual void Shutdown() override;
-	virtual bool IsInitialized() const { return _GDIInitialized; }
+	bool Init(const ScreenPoint& InScreenSize) override;
+	void Shutdown() override;
 
-	virtual void Clear(const LinearColor& InClearColor) override;
-	virtual void BeginFrame() override;
-	virtual void EndFrame() override;
+	[[nodiscard]]
+	virtual bool IsInitialized() const { return mGDIInitialized; }
 
-	virtual void DrawPoint(const Vector2& InVectorPos, const LinearColor& InColor) override;
+	void Clear(const LinearColor& InClearColor) override;
+	void BeginFrame() override;
+	void EndFrame() override;
 
-	virtual void DrawFullVerticalLine(int InX, const LinearColor& InColor) override;
-	virtual void DrawFullHorizontalLine(int InY, const LinearColor& InColor) override;
+	void DrawPoint(const Vector2& InVectorPos, const LinearColor& InColor) override;
 
-	virtual void PushStatisticText(std::string && InText) override;
-	virtual void PushStatisticTexts(std::vector<std::string> && InTexts) override;
+	void DrawFullVerticalLine(int InX, const LinearColor& InColor) override;
+	void DrawFullHorizontalLine(int InY, const LinearColor& InColor) override;
+
+	void PushStatisticText(std::string && InText) override;
+	void PushStatisticTexts(std::vector<std::string> && InTexts) override;
 
 private:
 	FORCEINLINE void SetPixel(const ScreenPoint& InPos, const LinearColor& InColor);
+	
 };
 
 FORCEINLINE void WindowsRSI::SetPixel(const ScreenPoint& InPos, const LinearColor& InColor)

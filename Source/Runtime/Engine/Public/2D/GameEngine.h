@@ -2,22 +2,23 @@
 
 namespace CK
 {
-namespace DD
-{
+	namespace DD
+	{
 
-class GameEngine
-{
-public:
-	GameEngine() = default;
+		class GameEngine
+		{
+		public:
+			GameEngine() = default;
 
-public:
-	bool Init(const ScreenPoint& InViewportSize);
-	InputManager& GetInputManager() { return _InputManager; }
+		public:
+			bool Init(const ScreenPoint& InViewportSize);
+			InputManager& GetInputManager() { return mInputManager; }
 
-private:
-	ScreenPoint _ViewportSize;
-	InputManager _InputManager;
-};
+		private:
+			ScreenPoint mViewportSize;
+			InputManager mInputManager;
 
-}
+		};
+
+	}
 }

@@ -2,19 +2,19 @@
 #include "Precompiled.h"
 #include "SoftRenderer.h"
 
-SoftRenderer::SoftRenderer(RenderingSoftwareInterface* InRSI) : _RSI(InRSI)
+SoftRenderer::SoftRenderer(RenderingSoftwareInterface* InRSI) : mRSI(InRSI)
 {
 }
 
 void SoftRenderer::OnTick()
 {
-	if (!_AllInitialized)
+	if (!mAllInitialized)
 	{
 		// 퍼포먼스 카운터 초기화.
 		if(PerformanceInitFunc && PerformanceMeasureFunc)
 		{
-			_CyclesPerMilliSeconds = PerformanceInitFunc();
-			_PerformanceCheckInitialized = true;
+			mCyclesPerMilliSeconds = PerformanceInitFunc();
+			mPerformanceCheckInitialized = true;
 		}
 		else
 		{
@@ -22,36 +22,36 @@ void SoftRenderer::OnTick()
 		}
 
 		// 스크린 크기 확인
-		if (_ScreenSize.HasZero())
+		if (mScreenSize.HasZero())
 		{
 			return;
 		}
 
 		// 소프트 렌더러 초기화.
-		if (!_RSI->Init(_ScreenSize))
+		if (!mRSI->Init(mScreenSize))
 		{
 			return;
 		}
 
-		_RendererInitialized = true;
+		mRendererInitialized = true;
 
 		// 게임 엔진 초기화
-		if (!_GameEngine.Init(_ScreenSize))
+		if (!mGameEngine.Init(mScreenSize))
 		{
 			return;
 		}
 
-		_GameEngineInitialized = true;
+		mGameEngineInitialized = true;
 
-		_AllInitialized = _RendererInitialized && _PerformanceCheckInitialized && _GameEngineInitialized;
-		if (_AllInitialized)
+		mAllInitialized = mRendererInitialized && mPerformanceCheckInitialized && mGameEngineInitialized;
+		if (mAllInitialized)
 		{
 			BindTickFunctions();
 		}
 	}
 	else
 	{
-		assert(_RSI != nullptr && _RSI->IsInitialized() && !_ScreenSize.HasZero());
+		assert(mRSI != nullptr && mRSI->IsInitialized() && !mScreenSize.HasZero());
 
 		PreUpdate();
 		Update();
@@ -61,37 +61,37 @@ void SoftRenderer::OnTick()
 
 void SoftRenderer::OnResize(const ScreenPoint& InNewScreenSize)
 {
-	_ScreenSize = InNewScreenSize;
+	mScreenSize = InNewScreenSize;
 
 	// 크기가 변경되면 렌더러와 엔진 초기화
-	if (_RendererInitialized)
+	if (mRendererInitialized)
 	{
-		_RSI->Init(InNewScreenSize);
+		mRSI->Init(InNewScreenSize);
 	}
 
-	if (_GameEngineInitialized)
+	if (mGameEngineInitialized)
 	{
-		_GameEngine.Init(_ScreenSize);
+		mGameEngine.Init(mScreenSize);
 	}
 	
 }
 
 void SoftRenderer::OnShutdown()
 {
-	_RSI->Shutdown();
+	mRSI->Shutdown();
 }
 
 void SoftRenderer::PreUpdate()
 {
 	// 성능 측정 시작.
-	_FrameTimeStamp = PerformanceMeasureFunc();
-	if (_FrameCount == 0)
+	mFrameTimeStamp = PerformanceMeasureFunc();
+	if (mFrameCount == 0)
 	{
-		_StartTimeStamp = _FrameTimeStamp;
+		mStartTimeStamp = mFrameTimeStamp;
 	}
 
 	// 배경 지우기.
-	_RSI->Clear(LinearColor::White);
+	mRSI->Clear(LinearColor::White);
 }
 
 void SoftRenderer::PostUpdate()
@@ -100,22 +100,22 @@ void SoftRenderer::PostUpdate()
 	RenderFrame();
 
 	// 렌더링 마무리.
-	_RSI->EndFrame();
+	mRSI->EndFrame();
 
 	// 성능 측정 마무리.
-	_FrameCount++;
-	INT64 currentTimeStamp = PerformanceMeasureFunc();
-	INT64 frameCycles = currentTimeStamp - _FrameTimeStamp;
-	INT64 elapsedCycles = currentTimeStamp - _StartTimeStamp;
-	_FrameTime = frameCycles / _CyclesPerMilliSeconds;
-	_ElapsedTime = elapsedCycles / _CyclesPerMilliSeconds;
-	_FrameFPS = _FrameTime == 0.f ? 0.f : 1000.f / _FrameTime;
-	_AverageFPS = _ElapsedTime == 0.f ? 0.f : 1000.f / _ElapsedTime * _FrameCount;
+	mFrameCount++;
+	const INT64 currentTimeStamp = PerformanceMeasureFunc();
+	const INT64 frameCycles = currentTimeStamp - mFrameTimeStamp;
+	const INT64 elapsedCycles = currentTimeStamp - mStartTimeStamp;
+	mFrameTime = frameCycles / mCyclesPerMilliSeconds;
+	mElapsedTime = elapsedCycles / mCyclesPerMilliSeconds;
+	mFrameFPS = mFrameTime == 0.f ? 0.f : 1000.f / mFrameTime;
+	mAverageFPS = mElapsedTime == 0.f ? 0.f : 1000.f / mElapsedTime * mFrameCount;
 }
 
 void SoftRenderer::RenderFrame()
 {
-	if (_TickFunctionBound)
+	if (mTickFunctionBound)
 	{
 		RenderFrameFunc();
 	}
@@ -123,18 +123,18 @@ void SoftRenderer::RenderFrame()
 
 void SoftRenderer::Update()
 {
-	if (_TickFunctionBound)
+	if (mTickFunctionBound)
 	{
-		UpdateFunc(_FrameTime / 1000.f);
+		UpdateFunc(mFrameTime / 1000.f);
 	}
 }
 
 void SoftRenderer::BindTickFunctions()
 {
 	using namespace std::placeholders;
-	RenderFrameFunc = std::bind(&SoftRenderer::Render2D, this);
-	UpdateFunc = std::bind(&SoftRenderer::Update2D, this, _1);
-	_TickFunctionBound = true;
+	RenderFrameFunc = [this] { Render2D(); };
+	UpdateFunc = [this](float deltaSeconds) { Update2D(deltaSeconds); };
+	mTickFunctionBound = true;
 }
 
 

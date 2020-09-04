@@ -32,12 +32,12 @@ void WindowsRSI::EndFrame()
 
 void WindowsRSI::DrawFullVerticalLine(int InX, const LinearColor & InColor)
 {
-	if (InX < 0 || InX >= _ScreenSize.X)
+	if (InX < 0 || InX >= mScreenSize.X)
 	{
 		return;
 	}
 
-	for (int y = 0; y < _ScreenSize.Y; ++y)
+	for (int y = 0; y < mScreenSize.Y; ++y)
 	{
 		SetPixel(ScreenPoint(InX, y), InColor);
 	}
@@ -45,12 +45,12 @@ void WindowsRSI::DrawFullVerticalLine(int InX, const LinearColor & InColor)
 
 void WindowsRSI::DrawFullHorizontalLine(int InY, const LinearColor & InColor)
 {
-	if (InY < 0 || InY >= _ScreenSize.Y)
+	if (InY < 0 || InY >= mScreenSize.Y)
 	{
 		return;
 	}
 
-	for (int x = 0; x < _ScreenSize.X; ++x)
+	for (int x = 0; x < mScreenSize.X; ++x)
 	{
 		SetPixel(ScreenPoint(x, InY), InColor);
 	}
@@ -58,15 +58,15 @@ void WindowsRSI::DrawFullHorizontalLine(int InY, const LinearColor & InColor)
 
 void WindowsRSI::DrawPoint(const Vector2& InVectorPos, const LinearColor& InColor)
 {
-	SetPixel(ScreenPoint::ToScreenCoordinate(_ScreenSize, InVectorPos), InColor);
+	SetPixel(ScreenPoint::ToScreenCoordinate(mScreenSize, InVectorPos), InColor);
 }
 
 void WindowsRSI::PushStatisticText(std::string && InText)
 {
-	_StatisticTexts.emplace_back(InText);
+	mStatisticTexts.emplace_back(InText);
 }
 
 void WindowsRSI::PushStatisticTexts(std::vector<std::string> && InTexts)
 {
-	std::move(InTexts.begin(), InTexts.end(), std::back_inserter(_StatisticTexts));
+	std::move(InTexts.begin(), InTexts.end(), std::back_inserter(mStatisticTexts));
 }
