@@ -88,6 +88,6 @@ namespace WindowsUtil
 	{
 		InInputManager.GetXAxis = WindowsUtil::GetXAxisInput;
 		InInputManager.GetYAxis = WindowsUtil::GetYAxisInput;
-		InInputManager.SpacePressed = WindowsUtil::SpacePressedInput;
+		InInputManager.IsSpacePressed = WindowsUtil::SpacePressedInput;
 	}
 }

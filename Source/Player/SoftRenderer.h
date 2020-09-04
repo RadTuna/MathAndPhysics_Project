@@ -1,5 +1,18 @@
 #pragma once
 
+// 원 제어 값
+constexpr float MIN_CIRCLE_RADIUS = 1.f;
+constexpr float CIRCLE_EXPAND_SPEED = 20.f;
+constexpr float CIRCLE_REDUCE_SPEED = 30.f;
+constexpr float CIRCLE_MULTIPLIER = 0.5f;
+constexpr float CIRCLE_ROTATION_SPEED = 0.5f;
+
+// 출력 텍스트
+constexpr TCHAR* const CIRCLE_ORIGIN_TEXT = "CircleOrigin : ";
+constexpr TCHAR* const CIRCLE_RADIUS_TEXT = "CircleRadius : ";
+constexpr TCHAR* const CIRCLE_DEPTH_TEXT = "CircleDepth : ";
+
+
 class SoftRenderer
 {
 public:
@@ -47,8 +60,20 @@ private:
 	void Render2D();
 	void DrawGrid2D();
 
-	int mGrid2DUnit = 10;
+private:
+	// 사용자 커스텀 헬퍼 함수
+	void DrawBigPoint(const Vector2& targetPoint) const;
+	void DrawCircle(float radius, float stepTheta) const;
+	void DrawRecursiveCircle(const Vector2& origin, float radius, float stepTheta, UINT32 numChild, UINT32 depth) const;
 
+private:
+	// 사용자 커스텀 헬퍼 변수
+	float mCircleRadius = MIN_CIRCLE_RADIUS;
+	float mCircleRotationRadian = 0.f;
+
+private:
+	int mGrid2DUnit = 10;
+	
 	// 로직 구현을 위한 멤버 변수
 	Vector2 mCurrentPosition = Vector2::Zero;
 	LinearColor mCurrentColor = LinearColor::Blue;

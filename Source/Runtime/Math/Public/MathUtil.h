@@ -72,7 +72,24 @@ namespace CK
 			return X < Min ? Min : X < Max ? X : Max;
 		}
 
-		static FORCEINLINE void GetSinCos(float& OutSin, float& OutCos, float InDegree)
+		static constexpr FORCEINLINE float RadianClamp(const float radian)
+		{
+			float newRadian = radian;
+			if (radian >= Math::TwoPI)
+			{
+				const int overRating = static_cast<int>(Abs(radian / Math::TwoPI));
+				newRadian -= Math::TwoPI * overRating;
+			}
+			else if (radian < 0)
+			{
+				const int underRating = static_cast<int>(Abs(radian / Math::TwoPI));
+				newRadian += Math::TwoPI * underRating; 
+			}
+
+			return newRadian;
+		}
+
+		static FORCEINLINE void GetSinCosByDegree(float& OutSin, float& OutCos, float InDegree)
 		{
 			if (InDegree == 0.f)
 			{
