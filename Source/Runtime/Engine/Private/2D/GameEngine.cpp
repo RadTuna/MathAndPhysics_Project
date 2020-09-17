@@ -4,7 +4,8 @@ using namespace CK::DD;
 
 bool GameEngine::Init(const ScreenPoint& InViewportSize)
 {
-	if (!mInputManager.GetXAxis || !mInputManager.GetYAxis || !mInputManager.IsSpacePressed)
+	if (!mInputManager.GetXAxis || !mInputManager.GetYAxis || !mInputManager.GetZAxis 
+		|| !mInputManager.GetWAxis || !mInputManager.IsSpacePressed)
 	{
 		return false;
 	}
