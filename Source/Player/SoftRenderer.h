@@ -56,6 +56,11 @@ private:
 
 private:
 	// 사용자 커스텀 헬퍼 변수
+	Matrix2x2 mRotationMatrix;
+	Matrix2x2 mScaleMatrix;
+	Matrix2x2 mShearMatrix;
+
+	Matrix2x2 mCombineMatrix;
 
 private:
 	int mGrid2DUnit = 10;
