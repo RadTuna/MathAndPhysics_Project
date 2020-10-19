@@ -1,6 +1,9 @@
 
 #pragma once
 
+namespace CK
+{
+
 class WindowsGDI
 {
 public:
@@ -20,11 +23,6 @@ public:
 	void CreateDepthBuffer();
 	void ClearDepthBuffer();
 
-	[[nodiscard]]
-	float GetDepthBufferValue(const ScreenPoint& InPos) const;
-	void SetDepthBufferValue(const ScreenPoint& InPos, float InDepthValue);
-
-	[[nodiscard]]
 	Color32* GetScreenBuffer() const;
 
 	void DrawStatisticTexts();
@@ -33,27 +31,23 @@ public:
 
 protected:
 	FORCEINLINE bool IsInScreen(const ScreenPoint& InPos) const;
-
-	[[nodiscard]]
 	int GetScreenBufferIndex(const ScreenPoint& InPos) const;
 
 	template <class T>
 	T* CopyBuffer(T* InDst, T* InSrc, int InCount);
 
 protected:
-	bool mGDIInitialized = false;
+	bool _GDIInitialized = false;
 
-	HWND mHandle = nullptr;
-	HDC	mScreenDC = nullptr;
-	HDC mMemoryDC = nullptr;
-	HBITMAP mDefaultBitmap = nullptr;
-	HBITMAP mDIBitmap = nullptr;
+	HWND _Handle = 0;
+	HDC	_ScreenDC = 0, _MemoryDC = 0;
+	HBITMAP _DefaultBitmap = 0, DIBitmap = 0;
 
-	Color32* mScreenBuffer = nullptr;
-	float* mDepthBuffer = nullptr;
+	Color32* _ScreenBuffer = nullptr;
+	float* _DepthBuffer = nullptr;
 
-	ScreenPoint mScreenSize;
-	std::vector<std::string> mStatisticTexts;
+	ScreenPoint _ScreenSize;
+	std::vector<std::string> _StatisticTexts;
 };
 
 FORCEINLINE void WindowsGDI::SetPixelOpaque(const ScreenPoint& InPos, const LinearColor& InColor)
@@ -63,26 +57,26 @@ FORCEINLINE void WindowsGDI::SetPixelOpaque(const ScreenPoint& InPos, const Line
 		return;
 	}
 
-	Color32* dest = mScreenBuffer;
+	Color32* dest = _ScreenBuffer;
 	*(dest + GetScreenBufferIndex(InPos)) = InColor.ToColor32();
 	return;
 }
 
 FORCEINLINE void WindowsGDI::SetPixelAlphaBlending(const ScreenPoint & InPos, const LinearColor & InColor)
 {
-	const LinearColor bufferColor = GetPixel(InPos);
+	LinearColor bufferColor = GetPixel(InPos);
 	if (!IsInScreen(InPos))
 	{
 		return;
 	}
 
-	Color32* dest = mScreenBuffer;
+	Color32* dest = _ScreenBuffer;
 	*(dest + GetScreenBufferIndex(InPos)) = (InColor * InColor.A + bufferColor * (1.f - InColor.A)).ToColor32();
 }
 
 FORCEINLINE bool WindowsGDI::IsInScreen(const ScreenPoint& InPos) const
 {
-	if ((InPos.X < 0 || InPos.X >= mScreenSize.X) || (InPos.Y < 0 || InPos.Y >= mScreenSize.Y))
+	if ((InPos.X < 0 || InPos.X >= _ScreenSize.X) || (InPos.Y < 0 || InPos.Y >= _ScreenSize.Y))
 	{
 		return false;
 	}
@@ -92,7 +86,7 @@ FORCEINLINE bool WindowsGDI::IsInScreen(const ScreenPoint& InPos) const
 
 FORCEINLINE int WindowsGDI::GetScreenBufferIndex(const ScreenPoint& InPos) const
 {
-	return InPos.Y * mScreenSize.X + InPos.X;
+	return InPos.Y * _ScreenSize.X + InPos.X;
 }
 
 FORCEINLINE LinearColor WindowsGDI::GetPixel(const ScreenPoint& InPos)
@@ -102,7 +96,9 @@ FORCEINLINE LinearColor WindowsGDI::GetPixel(const ScreenPoint& InPos)
 		return LinearColor::Error;
 	}
 
-	Color32* dest = mScreenBuffer;
-	const Color32 bufferColor = *(dest + GetScreenBufferIndex(InPos));
+	Color32* dest = _ScreenBuffer;
+	Color32 bufferColor = *(dest + GetScreenBufferIndex(InPos));
 	return LinearColor(bufferColor);
+}
+
 }

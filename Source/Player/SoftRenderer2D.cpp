@@ -1,133 +1,88 @@
 
 #include "Precompiled.h"
 #include "SoftRenderer.h"
+using namespace CK::DD;
 
 // 그리드 그리기
 void SoftRenderer::DrawGrid2D()
 {
-    // 그리드 색상
-    LinearColor gridColor(LinearColor(0.8f, 0.8f, 0.8f, 0.3f));
+	auto& r = GetRenderer();
+	const auto& g = Get2DGameEngine();
 
-    // 가로 세로 라인 그리기
-    ScreenPoint screenHalfSize = mScreenSize.GetHalf();
+	// 그리드 색상
+	LinearColor gridColor(LinearColor(0.8f, 0.8f, 0.8f, 0.3f));
 
-    for (int x = screenHalfSize.X; x <= mScreenSize.X; x += mGrid2DUnit)
-    {
-        mRSI->DrawFullVerticalLine(x, gridColor);
-        if (x > screenHalfSize.X)
-        {
-            mRSI->DrawFullVerticalLine(2 * screenHalfSize.X - x, gridColor);
-        }
-    }
+	// 뷰의 영역 계산
+	Vector2 viewPos = g.GetMainCamera().GetTransform().GetPosition();
+	Vector2 extent = Vector2(_ScreenSize.X * 0.5f, _ScreenSize.Y * 0.5f);
 
-    for (int y = screenHalfSize.Y; y <= mScreenSize.Y; y += mGrid2DUnit)
-    {
-        mRSI->DrawFullHorizontalLine(y, gridColor);
-        if (y > screenHalfSize.Y)
-        {
-            mRSI->DrawFullHorizontalLine(2 * screenHalfSize.Y - y, gridColor);
-        }
-    }
+	// 좌측 하단에서부터 격자 그리기
+	int xGridCount = _ScreenSize.X / _Grid2DUnit;
+	int yGridCount = _ScreenSize.Y / _Grid2DUnit;
 
-    // 월드 축 그리기
-    mRSI->DrawFullHorizontalLine(screenHalfSize.Y, LinearColor::Red);
-    mRSI->DrawFullVerticalLine(screenHalfSize.X, LinearColor::Green);
+	// 그리드가 시작되는 좌하단 좌표 값 계산
+	Vector2 minPos = viewPos - extent;
+	Vector2 minGridPos = Vector2(ceilf(minPos.X / (float)_Grid2DUnit), ceilf(minPos.Y / (float)_Grid2DUnit)) * (float)_Grid2DUnit;
+	ScreenPoint gridBottomLeft = ScreenPoint::ToScreenCoordinate(_ScreenSize, minGridPos - viewPos);
+
+	for (int ix = 0; ix < xGridCount; ++ix)
+	{
+		r.DrawFullVerticalLine(gridBottomLeft.X + ix * _Grid2DUnit, gridColor);
+	}
+
+	for (int iy = 0; iy < yGridCount; ++iy)
+	{
+		r.DrawFullHorizontalLine(gridBottomLeft.Y - iy * _Grid2DUnit, gridColor);
+	}
+
+	// 월드의 원점
+	ScreenPoint worldOrigin = ScreenPoint::ToScreenCoordinate(_ScreenSize, -viewPos);
+	r.DrawFullHorizontalLine(worldOrigin.Y, LinearColor::Red);
+	r.DrawFullVerticalLine(worldOrigin.X, LinearColor::Green);
 }
 
 // 게임 로직
 void SoftRenderer::Update2D(float InDeltaSeconds)
 {
-    // 게임 로직에만 사용하는 변수
-    static float moveSpeed = 5.f;
-    static float scaleSpeed = 5.f;
-    static float rotateSpeed = 50.f;
+	auto& g = Get2DGameEngine();
+	const InputManager& input = g.GetInputManager();
 
-    mCurrentTime += InDeltaSeconds;
-
-    // 엔진 모듈에서 입력 관리자 가져오기
-    InputManager input = mGameEngine.GetInputManager();
-    const Vector2 deltaPosition = Vector2(input.GetXAxis(), input.GetYAxis()) * moveSpeed * InDeltaSeconds;
-    const float deltaRotation = input.GetZAxis() * -rotateSpeed * InDeltaSeconds;
-    const float deltaScale = input.GetWAxis() * scaleSpeed * InDeltaSeconds;
-
-    mCurrentPosition += deltaPosition;
-    mCurrentRotation += deltaRotation;
-    mCurrentScale += deltaScale;
-
-    // 밀기 행렬
-    mShearMatrix.Cols[0] = Vector2(1.f, mCurrentPosition.X);
-    mShearMatrix.Cols[1] = Vector2(mCurrentPosition.Y, 1.f);
-
-    // 회전 행렬
-    float sin;
-    float cos;
-    Math::GetSinCos(sin, cos, mCurrentRotation);
-    mRotationMatrix.Cols[0] = Vector2(cos, sin);
-    mRotationMatrix.Cols[1] = Vector2(-sin, cos);
-
-    // 크기 행렬
-    mScaleMatrix.Cols[0] = Vector2(mCurrentScale, 0.f);
-    mScaleMatrix.Cols[1] = Vector2(0.f, mCurrentScale);
-
-    // 행렬 조합 (크기 -> 밀기 -> 회전)
-    mCombineMatrix = mRotationMatrix * mShearMatrix * mScaleMatrix;
-
-    mCurrentColor = input.IsSpacePressed() ? LinearColor::Red : LinearColor::Blue;
 }
-
 
 // 렌더링 로직
 void SoftRenderer::Render2D()
 {
-    // 격자 그리기
-    //DrawGrid2D();
+	auto& r = GetRenderer();
+	const auto& g = Get2DGameEngine();
 
-    static float drawStep = 1.f;
-    static float drawAngle = 0.1f;
-    static float circleIncrease = 0.5f;
-    static float particleLength = 50.f;
-    static float particleInterval = 10.f;
-    static float maxRadius = 500.f;
+	// 격자 그리기
+	DrawGrid2D();
 
-    float currentAngle = 0.f;
-    float currentParticleLength = 0.f;
-    float currentParticleInterval = 0.f;
+	static const float outerRadius = 200.f;
+	static const float innerRadius = 100.f;
+	static const float step = Math::TwoPI / 5.f;
+	static const float offset = Math::PI / 5.f;
 
-    HSVColor hsvColor(0.f, 1.0f, 1.0f);
-    for (float radius = 0.f; radius < maxRadius; radius += circleIncrease)
-    {
-        const float currentDrawLimit = currentAngle + drawAngle;
-        const float weightedDrawStep = drawStep / (radius + 0.0001f);
-        for (float angle = currentAngle; angle < currentDrawLimit; angle += weightedDrawStep)
-        {
-            if (currentParticleLength < particleLength)
-            {
-                const float x = radius * std::cosf(angle);
-                const float y = radius * std::sinf(angle);
+	std::vector<Vector2> outerRing;
+	std::vector<Vector2> innerRing;
 
-                Vector2 drawPoint(x, y);
-                drawPoint = mCombineMatrix * drawPoint;
+	for (float angle = 0.f; angle < Math::TwoPI; angle += step)
+	{
+		const float outerX = std::cosf(angle) * outerRadius;
+		const float outerY = std::sinf(angle) * outerRadius;
+	    outerRing.emplace_back(outerY, outerX);
 
-                hsvColor.H = angle * Math::InvPI * 0.5f;
-                hsvColor.V = currentParticleLength / particleLength;
-                mRSI->DrawPoint(drawPoint, hsvColor.ToLinearColor());
-                currentParticleLength += radius * weightedDrawStep;
-            }
-            else if (currentParticleInterval > particleInterval)
-            {
-                currentParticleLength = 0.f;
-                currentParticleInterval = 0.f;
-            }
-            else
-            {
-                currentParticleInterval += radius * weightedDrawStep;
-            }
-        }
+	    const float innerX = std::cosf(angle + offset) * innerRadius;
+		const float innerY = std::sinf(angle + offset) * innerRadius;
+		innerRing.emplace_back(innerY, innerX);
+	}
 
-        currentAngle = currentDrawLimit;
-    }
+	for (size_t index = 0; index < outerRing.size(); ++index)
+	{
+		size_t endIndex = (index + 1) % outerRing.size();
 
-    // 현재 위치를 화면에 출력
-    //mRSI->PushStatisticText(CIRCLE_ORIGIN_TEXT + mCurrentPosition.ToString());
+	    r.DrawLine(outerRing.at(index), innerRing.at(index), LinearColor::Magenta);
+		r.DrawLine(innerRing.at(index), outerRing.at(endIndex), LinearColor::Magenta);
+	}
 }
 

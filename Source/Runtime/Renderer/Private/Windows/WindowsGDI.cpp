@@ -9,52 +9,55 @@ bool WindowsGDI::InitializeGDI(const ScreenPoint& InScreenSize)
 {
 	ReleaseGDI();
 
-	mHandle = ::GetActiveWindow();
-	if (mHandle == nullptr)
+	if (_Handle == 0)
+	{
+		_Handle = ::GetActiveWindow();
+		if (_Handle == 0)
+		{
+			return false;
+		}
+	}
+
+	if (_GDIInitialized)
+	{
+		DeleteObject(_DefaultBitmap);
+		DeleteObject(DIBitmap);
+		ReleaseDC(_Handle, _ScreenDC);
+		ReleaseDC(_Handle, _MemoryDC);
+	}
+
+	_ScreenDC = GetDC(_Handle);
+	if (_ScreenDC == NULL)
 	{
 		return false;
 	}
 
-	if (mGDIInitialized)
-	{
-		DeleteObject(mDefaultBitmap);
-		DeleteObject(mDIBitmap);
-		ReleaseDC(mHandle, mScreenDC);
-		ReleaseDC(mHandle, mMemoryDC);
-	}
-
-	mScreenDC = GetDC(mHandle);
-	if (mScreenDC == nullptr)
+	_MemoryDC = CreateCompatibleDC(_ScreenDC);
+	if (_MemoryDC == NULL)
 	{
 		return false;
 	}
 
-	mMemoryDC = CreateCompatibleDC(mScreenDC);
-	if (mMemoryDC == nullptr)
-	{
-		return false;
-	}
-
-	mScreenSize = InScreenSize;
+	_ScreenSize = InScreenSize;
 
 	// Color & Bitmap Setting
 	BITMAPINFO bmi;
 	memset(&bmi, 0, sizeof(BITMAPINFO));
 	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	bmi.bmiHeader.biWidth = mScreenSize.X;
-	bmi.bmiHeader.biHeight = -mScreenSize.Y;
+	bmi.bmiHeader.biWidth = _ScreenSize.X;
+	bmi.bmiHeader.biHeight = -_ScreenSize.Y;
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biBitCount = 32;
 	bmi.bmiHeader.biCompression = BI_RGB;
 
-	mDIBitmap = CreateDIBSection(mMemoryDC, &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&mScreenBuffer), nullptr, 0);
-	if (mDIBitmap == nullptr)
+	DIBitmap = CreateDIBSection(_MemoryDC, &bmi, DIB_RGB_COLORS, (void**)&_ScreenBuffer, NULL, 0);
+	if (DIBitmap == NULL)
 	{
 		return false;
 	}
 
-	mDefaultBitmap = static_cast<HBITMAP>(SelectObject(mMemoryDC, mDIBitmap));
-	if (mDefaultBitmap == nullptr)
+	_DefaultBitmap = (HBITMAP)SelectObject(_MemoryDC, DIBitmap);
+	if (_DefaultBitmap == NULL)
 	{
 		return false;
 	}
@@ -62,40 +65,40 @@ bool WindowsGDI::InitializeGDI(const ScreenPoint& InScreenSize)
 	// Create Depth Buffer
 	CreateDepthBuffer();
 
-	mGDIInitialized = true;
+	_GDIInitialized = true;
 	return true;
 }
 
 void WindowsGDI::ReleaseGDI()
 {
-	if (mGDIInitialized)
+	if (_GDIInitialized)
 	{
-		DeleteObject(mDefaultBitmap);
-		DeleteObject(mDIBitmap);
-		ReleaseDC(mHandle, mScreenDC);
-		ReleaseDC(mHandle, mMemoryDC);
+		DeleteObject(_DefaultBitmap);
+		DeleteObject(DIBitmap);
+		ReleaseDC(_Handle, _ScreenDC);
+		ReleaseDC(_Handle, _MemoryDC);
 	}
 
-	if (mDepthBuffer != nullptr)
+	if (_DepthBuffer != nullptr)
 	{
-		delete[] mDepthBuffer;
-		mDepthBuffer = nullptr;
+		delete[] _DepthBuffer;
+		_DepthBuffer = nullptr;
 	}
 
-	mGDIInitialized = false;
+	_GDIInitialized = false;
 }
 
 
 void WindowsGDI::FillBuffer(Color32 InColor)
 {
-	if (!mGDIInitialized || (mScreenBuffer == nullptr))
+	if (!_GDIInitialized || (_ScreenBuffer == NULL))
 	{
 		return;
 	}
 
-	Color32* dest = mScreenBuffer;
-	const UINT32 totalCount = mScreenSize.X * mScreenSize.Y;
-	CopyBuffer<Color32>(mScreenBuffer, &InColor, totalCount);
+	Color32* dest = _ScreenBuffer;
+	UINT32 totalCount = _ScreenSize.X * _ScreenSize.Y;
+	CopyBuffer<Color32>(_ScreenBuffer, &InColor, totalCount);
 	return;
 }
 
@@ -104,7 +107,7 @@ T* WindowsGDI::CopyBuffer(T* InDst, T* InSrc, int InCount)
 {
 	if (InCount == 0)
 	{
-		return nullptr;
+		return NULL;
 	}
 
 	if (InCount == 1)
@@ -113,7 +116,7 @@ T* WindowsGDI::CopyBuffer(T* InDst, T* InSrc, int InCount)
 	}
 	else
 	{
-		int half = Math::FloorToInt(static_cast<float>(InCount) * 0.5f);
+		int half = Math::FloorToInt(InCount * 0.5f);
 		CopyBuffer<T>(InDst, InSrc, half);
 		memcpy(InDst + half, InDst, half * sizeof(T));
 
@@ -128,89 +131,59 @@ T* WindowsGDI::CopyBuffer(T* InDst, T* InSrc, int InCount)
 
 Color32* WindowsGDI::GetScreenBuffer() const
 {
-	return mScreenBuffer;
+	return _ScreenBuffer;
 }
 
 void WindowsGDI::DrawStatisticTexts()
 {
-	if (mStatisticTexts.empty())
+	if (_StatisticTexts.size() == 0)
 	{
 		return;
 	}
 
-	HFONT hOldFont;
-	const HFONT hFont = static_cast<HFONT>(GetStockObject(ANSI_VAR_FONT));
-	if (hOldFont = static_cast<HFONT>(SelectObject(mMemoryDC, hFont)))
+	HFONT hFont, hOldFont;
+	hFont = (HFONT)GetStockObject(ANSI_VAR_FONT);
+	if (hOldFont = (HFONT)SelectObject(_MemoryDC, hFont))
 	{
 		static const int leftPosition = 600;
 		static const int topPosition = 10;
 		static const int rowHeight = 20;
 		int currentPosition = topPosition;
-		for (std::vector<std::string>::const_iterator it = mStatisticTexts.begin(); it != mStatisticTexts.end(); ++it)
+		for (std::vector<std::string>::const_iterator it = _StatisticTexts.begin(); it != _StatisticTexts.end(); ++it)
 		{
-			TextOut(mMemoryDC, leftPosition, currentPosition, (*it).c_str(), static_cast<int>((*it).length()));
+			TextOut(_MemoryDC, leftPosition, currentPosition, (*it).c_str(), (int)((*it).length()));
 			currentPosition += rowHeight;
 		}
 
-		SelectObject(mMemoryDC, hOldFont);
+		SelectObject(_MemoryDC, hOldFont);
 	}
 }
 
 void WindowsGDI::SwapBuffer()
 {
-	if (!mGDIInitialized)
+	if (!_GDIInitialized)
 	{
 		return;
 	}
 
 	DrawStatisticTexts();
-	BitBlt(mScreenDC, 0, 0, mScreenSize.X, mScreenSize.Y, mMemoryDC, 0, 0, SRCCOPY);
+	BitBlt(_ScreenDC, 0, 0, _ScreenSize.X, _ScreenSize.Y, _MemoryDC, 0, 0, SRCCOPY);
 
-	mStatisticTexts.clear();
+	_StatisticTexts.clear();
 }
 
 void WindowsGDI::CreateDepthBuffer()
 {
-	mDepthBuffer = new float[mScreenSize.X * mScreenSize.Y];
+	_DepthBuffer = new float[_ScreenSize.X * _ScreenSize.Y];
 }
 
 void WindowsGDI::ClearDepthBuffer()
 {
-	if (mDepthBuffer != nullptr)
+	if (_DepthBuffer != nullptr)
 	{
-		float* dest = mDepthBuffer;
-		float defValue = INFINITY;
-		const UINT32 totalCount = mScreenSize.X * mScreenSize.Y;
-		CopyBuffer<float>(mDepthBuffer, &defValue, totalCount);
+		float* dest = _DepthBuffer;
+		static float defValue = INFINITY;
+		UINT32 totalCount = _ScreenSize.X * _ScreenSize.Y;
+		CopyBuffer<float>(_DepthBuffer, &defValue, totalCount);
 	}
-}
-
-float WindowsGDI::GetDepthBufferValue(const ScreenPoint& InPos) const
-{
-	if (mDepthBuffer == nullptr)
-	{
-		return INFINITY;
-	}
-
-	if (!IsInScreen(InPos))
-	{
-		return INFINITY;
-	}
-
-	return *(mDepthBuffer + GetScreenBufferIndex(InPos));
-}
-
-void WindowsGDI::SetDepthBufferValue(const ScreenPoint& InPos, float InDepthValue)
-{
-	if (mDepthBuffer == nullptr)
-	{
-		return;
-	}
-
-	if (!IsInScreen(InPos))
-	{
-		return;
-	}
-
-	*(mDepthBuffer + GetScreenBufferIndex(InPos)) = InDepthValue;
 }
