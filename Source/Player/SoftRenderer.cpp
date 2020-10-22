@@ -65,6 +65,9 @@ void SoftRenderer::OnTick()
 		if (_AllInitialized)
 		{
 			_TickEnabled = true;
+
+			Awake2D();
+			Awake3D();
 		}
 	}
 	else

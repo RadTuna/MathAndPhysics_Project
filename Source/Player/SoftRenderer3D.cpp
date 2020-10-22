@@ -43,6 +43,12 @@ void SoftRenderer::DrawGizmo3D()
 	SetDrawMode(prevShowMode);
 }
 
+void SoftRenderer::Awake3D()
+{
+    // 3D 기본 초기화
+}
+
+
 // 게임 로직
 void SoftRenderer::Update3D(float InDeltaSeconds)
 {

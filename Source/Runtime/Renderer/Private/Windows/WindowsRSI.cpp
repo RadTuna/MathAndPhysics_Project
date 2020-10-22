@@ -227,13 +227,14 @@ void WindowsRSI::DrawLine(const Vector2& InStartPos, const Vector2& InEndPos, co
     // 여기에 관련 코드를 구현하기.
     int width = Math::Abs(endPosition.X - startPosition.X);
     int height = Math::Abs(endPosition.Y - startPosition.Y);
-    int signX = (endPosition.X - startPosition.X) / width;
-    int signY = (endPosition.Y - startPosition.Y) / height;
-    const int aspect = height / width;
+    int signX = Math::Sign(endPosition.X - startPosition.X);
+    int signY = Math::Sign(endPosition.Y - startPosition.Y);
 
-    if (aspect >= 1)
+    bool isSwap = false;
+    if (height > width)
     {
         std::swap(height, width);
+        isSwap = true;
     }
 
     const int hOffset = 2 * height;
@@ -246,7 +247,7 @@ void WindowsRSI::DrawLine(const Vector2& InStartPos, const Vector2& InEndPos, co
 
         if (judge >= 0)
         {
-            if (aspect >= 1)
+            if (isSwap)
             {
                 drawPoint.X += signX;
             }
@@ -258,7 +259,7 @@ void WindowsRSI::DrawLine(const Vector2& InStartPos, const Vector2& InEndPos, co
             judge -= wOffset;
         }
 
-        if (aspect >= 1)
+        if (isSwap)
         {
             drawPoint.Y += signY;
         }
