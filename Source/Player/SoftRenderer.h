@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Agent.h"
-#include "Player.h"
-
 enum class GameEngineType : UINT32
 {
 	DD = 0,
@@ -84,7 +81,6 @@ private:
 	FORCEINLINE void SetWireframeColor(const LinearColor& InLinearColor) { _WireframeColor = InLinearColor; }
 
 	// 2D 그래픽스 구현
-	void Awake2D();
 	void Update2D(float InDeltaSeconds);
 	void Render2D();
 	void DrawGrid2D();
@@ -94,7 +90,6 @@ private:
 	int _Grid2DUnit = 10;
 
 	// 3D 그래픽스 구현
-	void Awake3D();
 	void DrawGizmo3D();
 	void Update3D(float InDeltaSeconds);
 	void LateUpdate3D(float InDeltaSeconds);
@@ -126,7 +121,7 @@ private:
 	LinearColor _BackgroundColor = LinearColor::WhiteSmoke;
 
 	// 와이어프레임 색상
-	LinearColor _WireframeColor = LinearColor::DimGray;
+	LinearColor _WireframeColor = LinearColor::Blue;
 
 	// 성능 측정
 	long long _StartTimeStamp = 0;
@@ -148,13 +143,4 @@ private:
 
 	// 응용 프로그램 입력
 	SystemInputManager _SystemInputManager;
-
-private:
-	// 커스텀 변수
-	LinearColor _AgentColor;
-	LinearColor _PlayerColor;
-
-	std::vector<std::unique_ptr<Agent>> _Agents;
-	std::unique_ptr<Player> _Player;
-
 };

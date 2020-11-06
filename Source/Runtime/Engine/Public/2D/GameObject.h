@@ -13,7 +13,7 @@ public:
 		_Hash = std::hash<std::string>()(_Name);
 	}
 
-	virtual ~GameObject() {}
+	~GameObject() {}
 
 public:
 	// Á¾·ù
