@@ -58,7 +58,9 @@ public: // 주요 키 값
 
 	// 텍스쳐
 	static const std::size_t DiffuseTexture;
+	static const std::size_t WaterTexture;
 	static const std::string SteveTexturePath;
+	static const std::string WaterTexturePath;
 
 private:
 	bool _IsInitialized = false;

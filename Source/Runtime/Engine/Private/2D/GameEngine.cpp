@@ -11,7 +11,9 @@ const std::string GameEngine::PlayerGo("Player");
 
 // 텍스쳐
 const std::size_t GameEngine::DiffuseTexture = std::hash<std::string>()("Diffuse");
+const std::size_t GameEngine::WaterTexture = std::hash<std::string>()("Water");
 const std::string GameEngine::SteveTexturePath("Steve.png");
+const std::string GameEngine::WaterTexturePath("Water.png");
 
 struct GameObjectCompare
 {
@@ -83,10 +85,10 @@ bool GameEngine::LoadResources()
 	};
 
 	uv = {
-		Vector2(0.125f, 0.75f),
-		Vector2(0.125f, 0.875f),
-		Vector2(0.25f, 0.875f),
-		Vector2(0.25f, 0.75f)
+		Vector2(0.f, 0.f),
+		Vector2(0.f, 1.f),
+		Vector2(1.f, 1.f),
+		Vector2(1.f, 0.f)
 	};
 
 	i = {
@@ -98,6 +100,12 @@ bool GameEngine::LoadResources()
 	// 텍스쳐 로딩
 	Texture& diffuseTexture = CreateTexture(GameEngine::DiffuseTexture, GameEngine::SteveTexturePath);
 	if (!diffuseTexture.IsIntialized())
+	{
+		return false;
+	}
+
+	Texture& waterTexture = CreateTexture(GameEngine::WaterTexture, GameEngine::WaterTexturePath);
+	if (!waterTexture.IsIntialized())
 	{
 		return false;
 	}

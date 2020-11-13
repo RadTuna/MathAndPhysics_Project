@@ -69,8 +69,10 @@ void SoftRenderer::Update2D(float InDeltaSeconds)
 // 렌더링 로직
 void SoftRenderer::Render2D()
 {
-	auto& r = GetRenderer();
-	const auto& g = Get2DGameEngine();
+	RendererInterface& r = GetRenderer();
+	const GameEngine& g = Get2DGameEngine();
+	const Texture& texture = g.GetTexture(GameEngine::WaterTexture);
+	const Mesh& mesh = g.GetMesh(GameEngine::QuadMesh);
 
 	// 격자 그리기
 	DrawGrid2D();
@@ -81,23 +83,17 @@ void SoftRenderer::Render2D()
 	currentPosition += deltaPosition;
 	currentDegree += deltaDegree;
 
-	// 메시 데이터
-	static constexpr float squareHalfSize = 0.5f;
-	static constexpr size_t vertexCount = 4;
-	static constexpr size_t triangleCount = 2;
+	static float uvAnimationSpeed = 0.01f;
 
 	// 정점 배열과 인덱스 배열 생성
-	static constexpr std::array<Vertex2D, vertexCount> rawVertices = {
-		Vertex2D(Vector2(-squareHalfSize, -squareHalfSize)),
-		Vertex2D(Vector2(-squareHalfSize, squareHalfSize)),
-		Vertex2D(Vector2(squareHalfSize, squareHalfSize)),
-		Vertex2D(Vector2(squareHalfSize, -squareHalfSize))
-	};
+	static std::vector<Vector2> positions = mesh.GetVertices();
+	static std::vector<Vector2> uvs = mesh.GetUVs();
+	static std::vector<LinearColor> colors = mesh.GetColors();
+	static std::vector<size_t> indices = mesh.GetIndices();
 
-	static constexpr std::array<size_t, triangleCount * 3> indices = {
-		0, 1, 2,
-		0, 2, 3
-	};
+	// 메시 데이터
+	static size_t vertexCount = positions.size();
+	static size_t triangleCount = indices.size() / 3;
 
 	// 아핀 변환 행렬 ( 크기 ) 
 	Vector3 sBasis1(currentScale, 0.f, 0.f);
@@ -116,7 +112,8 @@ void SoftRenderer::Render2D()
 	// 아핀 변환 행렬 ( 이동 ) 
 	Vector3 tBasis1 = Vector3::UnitX;
 	Vector3 tBasis2 = Vector3::UnitY;
-	Vector3 tBasis3(currentPosition.X, currentPosition.Y, 1.f);
+	//Vector3 tBasis3(currentPosition.X, currentPosition.Y, 1.f);
+	Vector3 tBasis3 = Vector3::UnitZ;
 	Matrix3x3 tMatrix(tBasis1, tBasis2, tBasis3);
 
 	// 모든 아핀 변환의 조합 행렬. 크기-회전-이동 순으로 조합
@@ -126,12 +123,30 @@ void SoftRenderer::Render2D()
 	static std::vector<Vertex2D> vertices(vertexCount);
 	for (size_t vi = 0; vi < vertexCount; ++vi)
 	{
-		vertices[vi].Position = finalMatrix * rawVertices[vi].Position;
+		vertices[vi].Position = finalMatrix * positions[vi];
 	}
+
+	if (mesh.HasColor())
+	{
+	    for (size_t vi = 0; vi < vertexCount; ++vi)
+	    {
+		    vertices[vi].Color = colors[vi];
+	    }
+	}
+
+	if (mesh.HasUV())
+	{
+	    for (size_t vi = 0; vi < vertexCount; ++vi)
+	    {
+		    vertices[vi].UV = uvs[vi];
+	    }
+	}
+
 	vertices[0].Color = LinearColor::Red;
 	vertices[1].Color = LinearColor::Blue;
 	vertices[2].Color = LinearColor::Green;
 	vertices[3].Color = LinearColor::Blue;
+
 
 	// 변환된 정점을 잇는 선 그리기
 	for (size_t ti = 0; ti < triangleCount; ++ti)
@@ -182,8 +197,12 @@ void SoftRenderer::Render2D()
 				const bool bIsBoundU = weightU >= 0.f && weightU <= 1.f;
 				if (bIsBoundS && bIsBoundT && bIsBoundU)
 				{
-					const LinearColor drawColor = tv[0].Color * weightS + tv[1].Color * weightT + tv[2].Color * weightU;
-				    r.DrawPoint(pointToTest, drawColor);
+					Vector2 uv = tv[0].UV * weightS + tv[1].UV * weightT + tv[2].UV * weightU;
+
+					uv.X = uv.X + currentPosition.X * uvAnimationSpeed;
+					uv.Y = uv.Y + currentPosition.Y * uvAnimationSpeed;
+
+				    r.DrawPoint(pointToTest, texture.GetSample(uv));
 				}
 			}
 		}
