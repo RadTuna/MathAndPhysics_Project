@@ -84,8 +84,8 @@ private:
 	void Update2D(float InDeltaSeconds);
 	void Render2D();
 	void DrawGrid2D();
-	void DrawMesh2D(const class DD::Mesh& InMesh, const Matrix3x3& InMatrix, const LinearColor& InColor);
-	void DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const LinearColor& InColor, FillMode InFillMode);
+	void DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTexture, const Matrix3x3& InMatrix, const LinearColor& InColor);
+	void DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const Texture& InTexture, const LinearColor& InColor, FillMode InFillMode);
 
 	int _Grid2DUnit = 10;
 

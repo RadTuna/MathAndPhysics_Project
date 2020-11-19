@@ -5,6 +5,7 @@ using namespace CK::DD;
 
 // 메시
 const std::size_t GameEngine::QuadMesh = std::hash<std::string>()("SM_Quad");
+const std::size_t GameEngine::StarMesh = std::hash<std::string>()("SM_Star");
 
 // 게임 오브젝트
 const std::string GameEngine::PlayerGo("Player");
@@ -65,37 +66,114 @@ bool GameEngine::Init()
 
 bool GameEngine::LoadResources()
 {
-	// 메시 데이터 로딩
-	Mesh& quadMesh = CreateMesh(GameEngine::QuadMesh);
+	{
+	    // Quad 메시 데이터 로딩
+	    Mesh& quadMesh = CreateMesh(GameEngine::QuadMesh);
 
-	constexpr float squareHalfSize = 0.5f;
-	constexpr int vertexCount = 4;
-	constexpr int triangleCount = 2;
-	constexpr int indexCount = triangleCount * 3;
+	    constexpr float squareHalfSize = 0.5f;
+	    constexpr int vertexCount = 4;
+	    constexpr int triangleCount = 2;
+	    constexpr int indexCount = triangleCount * 3;
 
-	auto& v = quadMesh.GetVertices();
-	auto& i = quadMesh.GetIndices();
-	auto& uv = quadMesh.GetUVs();
+	    auto& v = quadMesh.GetVertices();
+	    auto& i = quadMesh.GetIndices();
+	    auto& uv = quadMesh.GetUVs();
 
-	v = {
-		Vector2(-squareHalfSize, -squareHalfSize),
-		Vector2(-squareHalfSize, squareHalfSize),
-		Vector2(squareHalfSize, squareHalfSize),
-		Vector2(squareHalfSize, -squareHalfSize)
-	};
+	    v = {
+		    Vector2(-squareHalfSize, -squareHalfSize),
+		    Vector2(-squareHalfSize, squareHalfSize),
+		    Vector2(squareHalfSize, squareHalfSize),
+		    Vector2(squareHalfSize, -squareHalfSize)
+	    };
 
-	uv = {
-		Vector2(0.f, 0.f),
-		Vector2(0.f, 1.f),
-		Vector2(1.f, 1.f),
-		Vector2(1.f, 0.f)
-	};
+	    uv = {
+		    Vector2(0.125f, 0.75f),
+		    Vector2(0.125f, 0.875f),
+		    Vector2(0.25f, 0.875f),
+		    Vector2(0.25f, 0.75f)
+	    };
 
-	i = {
-		0, 2, 1, 0, 3, 2
-	};
+	    i = {
+		    0, 2, 1, 0, 3, 2
+	    };
 
-	quadMesh.CalculateBounds();
+	    quadMesh.CalculateBounds();
+	}
+
+	{
+	   	// Star 메시 데이터 로딩
+	    Mesh& starMesh = CreateMesh(GameEngine::StarMesh);
+
+		constexpr float innerRadius = 0.8f;
+		constexpr float outerRadius = 2.f;
+
+	    constexpr int vertexCount = 11;
+	    constexpr int triangleCount = 10;
+	    constexpr int indexCount = triangleCount * 3;
+
+	    auto& v = starMesh.GetVertices();
+	    auto& i = starMesh.GetIndices();
+	    auto& uv = starMesh.GetUVs();
+
+		const float step = Math::TwoPI / 5.f;
+		const float innerOffset = Math::TwoPI / 10.f;
+
+		v.emplace_back(Vector2(0.f, 0.f)); // Center Position
+
+		for (size_t i = 0; i < 5; ++i)
+		{
+			const float innerAngle = step * i - innerOffset;
+		    v.emplace_back(Vector2(std::cosf(innerAngle) * innerRadius, std::sinf(innerAngle) * innerRadius)); // Inner Position
+		}
+
+		for (size_t i = 0; i < 5; ++i)
+		{
+			const float outerAngle = step * i;
+			v.emplace_back(Vector2(std::cosf(outerAngle) * outerRadius, std::sinf(outerAngle) * outerRadius)); // Outer Position
+		}
+
+		auto GetUV = [](const Vector2& min, const Vector2& max, const Vector2& location) -> Vector2
+		{
+			const float u = (location.X - min.X) / max.X;
+			const float v = (location.Y - min.Y) / max.Y;
+			return Vector2(u, v);
+		};
+
+		Vector2 minBound(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+		Vector2 maxBound(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
+		for (const Vector2& pos : v)
+		{
+		    if (minBound.X > pos.X)
+		    {
+		        minBound.X = pos.X;
+		    }
+			if (minBound.Y > pos.Y)
+			{
+			    minBound.Y = pos.Y;
+			}
+
+			if (maxBound.X < pos.X)
+			{
+			    maxBound.X = pos.X;
+			}
+			if (maxBound.Y < pos.Y)
+			{
+			    maxBound.Y = pos.Y;
+			}
+		}
+
+		for (const Vector2& pos : v)
+		{
+		    uv.emplace_back(GetUV(minBound, maxBound, pos));
+		}
+
+	    i = {
+		    0, 1, 2,  0, 2, 3,  0, 3, 4,  0, 4, 5,  0, 5, 1,  // Inner Triangle
+			1, 6, 2,  2, 7, 3,  3, 8, 4,  4, 9, 5,  5, 10, 1  // Outer Triangle
+	    };
+
+	    starMesh.CalculateBounds(); 
+	}
 
 	// 텍스쳐 로딩
 	Texture& diffuseTexture = CreateTexture(GameEngine::DiffuseTexture, GameEngine::SteveTexturePath);
@@ -115,6 +193,38 @@ bool GameEngine::LoadResources()
 
 bool GameEngine::LoadScene()
 {
+	constexpr float playerScale = 30.f;
+	constexpr size_t starCount = 100;
+
+	constexpr float minStarPos = -500.f;
+	constexpr float maxStarPos = 500.f;
+	constexpr float minStarScale = 10.f;
+	constexpr float maxStarScale = 20.f;
+
+	GameObject& playerGO = CreateNewGameObject(GameEngine::PlayerGo);
+	playerGO.SetMesh(GameEngine::QuadMesh);
+	playerGO.GetTransform().SetScale(Vector2::One * playerScale);
+	playerGO.SetColor(LinearColor::Red);
+
+	std::random_device randomDevice;
+	std::mt19937 mersenneTwister(randomDevice());
+	std::uniform_real_distribution<float> posDist(minStarPos, maxStarPos);
+	std::uniform_real_distribution<float> scaleDist(minStarScale, maxStarScale);
+
+	for (size_t i = 0; i < starCount; ++i)
+	{
+		char name[32];
+		std::snprintf(name, sizeof(name), "Star%u", i);
+		name[sizeof(name) - 1] = '\0';
+
+		const float scale = scaleDist(mersenneTwister);
+	    GameObject& star = CreateNewGameObject(name);
+		star.SetMesh(GameEngine::StarMesh);
+		star.GetTransform().SetPosition(Vector2(posDist(mersenneTwister), posDist(mersenneTwister)));
+		star.GetTransform().SetScale(Vector2(scale, scale));
+		star.SetColor(LinearColor::Blue);
+	}
+
 	return true;
 }
 
