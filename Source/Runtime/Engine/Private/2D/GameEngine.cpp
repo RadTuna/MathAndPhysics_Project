@@ -5,16 +5,44 @@ using namespace CK::DD;
 
 // 메시
 const std::size_t GameEngine::QuadMesh = std::hash<std::string>()("SM_Quad");
-const std::size_t GameEngine::StarMesh = std::hash<std::string>()("SM_Star");
 
 // 게임 오브젝트
-const std::string GameEngine::PlayerGo("Player");
+const std::string GameEngine::SunGo("Sun");
+const std::string GameEngine::MercuryPivotGo("MercuryPivot");
+const std::string GameEngine::MercuryGo("Mercury");
+const std::string GameEngine::VenusPivotGo("VenusPivot");
+const std::string GameEngine::VenusGo("Venus");
+const std::string GameEngine::EarthPivotGo("EarthPivot");
+const std::string GameEngine::EarthGo("Earth");
+const std::string GameEngine::MoonPivotGo("MoonPivot");
+const std::string GameEngine::MoonGo("Moon");
+const std::string GameEngine::MarsPivotGo("MarsPivot");
+const std::string GameEngine::MarsGo("Mars");
+const std::string GameEngine::DeimosPivotGo("DeimosPivot");
+const std::string GameEngine::DeimosGo("Deimos");
+const std::string GameEngine::PhobosPivotGo("PhobosPivot");
+const std::string GameEngine::PhobosGo("Phobos");
 
 // 텍스쳐
-const std::size_t GameEngine::DiffuseTexture = std::hash<std::string>()("Diffuse");
-const std::size_t GameEngine::WaterTexture = std::hash<std::string>()("Water");
-const std::string GameEngine::SteveTexturePath("Steve.png");
-const std::string GameEngine::WaterTexturePath("Water.png");
+const std::size_t GameEngine::SunTexture = std::hash<std::string>()("SunTex");
+const std::size_t GameEngine::MercuryTexture = std::hash<std::string>()("MercuryTex");
+const std::size_t GameEngine::VenusTexture = std::hash<std::string>()("VenusTex");
+const std::size_t GameEngine::EarthTexture = std::hash<std::string>()("EarthTex");
+const std::size_t GameEngine::MoonTexture = std::hash<std::string>()("MoonTex");
+const std::size_t GameEngine::MarsTexture = std::hash<std::string>()("MarsTex");
+const std::size_t GameEngine::DeimosTexture = std::hash<std::string>()("DeimosTex");
+const std::size_t GameEngine::PhobosTexture = std::hash<std::string>()("PhobosTex");
+
+// 텍스쳐 경로
+constexpr char* SunTexturePath = "Sun.png";
+constexpr char* MercuryTexturePath = "Mercury.png";
+constexpr char* VenusTexturePath = "Venus.png";
+constexpr char* EarthTexturePath = "Earth.png";
+constexpr char* MoonTexturePath = "Moon.png";
+constexpr char* MarsTexturePath = "Mars.png";
+constexpr char* DeimosTexturePath = "Deimos.png";
+constexpr char* PhobosTexturePath = "Phobos.png";
+
 
 struct GameObjectCompare
 {
@@ -66,124 +94,75 @@ bool GameEngine::Init()
 
 bool GameEngine::LoadResources()
 {
-	{
-	    // Quad 메시 데이터 로딩
-	    Mesh& quadMesh = CreateMesh(GameEngine::QuadMesh);
+	// 메시 데이터 로딩
+	Mesh& quadMesh = CreateMesh(GameEngine::QuadMesh);
 
-	    constexpr float squareHalfSize = 0.5f;
-	    constexpr int vertexCount = 4;
-	    constexpr int triangleCount = 2;
-	    constexpr int indexCount = triangleCount * 3;
+	constexpr float squareHalfSize = 0.5f;
+	constexpr int vertexCount = 4;
+	constexpr int triangleCount = 2;
+	constexpr int indexCount = triangleCount * 3;
 
-	    auto& v = quadMesh.GetVertices();
-	    auto& i = quadMesh.GetIndices();
-	    auto& uv = quadMesh.GetUVs();
+	auto& v = quadMesh.GetVertices();
+	auto& i = quadMesh.GetIndices();
+	auto& uv = quadMesh.GetUVs();
 
-	    v = {
-		    Vector2(-squareHalfSize, -squareHalfSize),
-		    Vector2(-squareHalfSize, squareHalfSize),
-		    Vector2(squareHalfSize, squareHalfSize),
-		    Vector2(squareHalfSize, -squareHalfSize)
-	    };
+	v = {
+		Vector2(-squareHalfSize, -squareHalfSize),
+		Vector2(-squareHalfSize, squareHalfSize),
+		Vector2(squareHalfSize, squareHalfSize),
+		Vector2(squareHalfSize, -squareHalfSize)
+	};
 
-	    uv = {
-		    Vector2(0.125f, 0.75f),
-		    Vector2(0.125f, 0.875f),
-		    Vector2(0.25f, 0.875f),
-		    Vector2(0.25f, 0.75f)
-	    };
+	uv = {
+		Vector2(0.f, 0.f),
+		Vector2(0.f, 1.f),
+		Vector2(1.f, 1.f),
+		Vector2(1.f, 0.f)
+	};
 
-	    i = {
-		    0, 2, 1, 0, 3, 2
-	    };
+	i = {
+		0, 2, 1, 0, 3, 2
+	};
 
-	    quadMesh.CalculateBounds();
-	}
-
-	{
-	   	// Star 메시 데이터 로딩
-	    Mesh& starMesh = CreateMesh(GameEngine::StarMesh);
-
-		constexpr float innerRadius = 0.8f;
-		constexpr float outerRadius = 2.f;
-
-	    constexpr int vertexCount = 11;
-	    constexpr int triangleCount = 10;
-	    constexpr int indexCount = triangleCount * 3;
-
-	    auto& v = starMesh.GetVertices();
-	    auto& i = starMesh.GetIndices();
-	    auto& uv = starMesh.GetUVs();
-
-		const float step = Math::TwoPI / 5.f;
-		const float innerOffset = Math::TwoPI / 10.f;
-
-		v.emplace_back(Vector2(0.f, 0.f)); // Center Position
-
-		for (size_t i = 0; i < 5; ++i)
-		{
-			const float innerAngle = step * i - innerOffset;
-		    v.emplace_back(Vector2(std::cosf(innerAngle) * innerRadius, std::sinf(innerAngle) * innerRadius)); // Inner Position
-		}
-
-		for (size_t i = 0; i < 5; ++i)
-		{
-			const float outerAngle = step * i;
-			v.emplace_back(Vector2(std::cosf(outerAngle) * outerRadius, std::sinf(outerAngle) * outerRadius)); // Outer Position
-		}
-
-		auto GetUV = [](const Vector2& min, const Vector2& max, const Vector2& location) -> Vector2
-		{
-			const float u = (location.X - min.X) / max.X;
-			const float v = (location.Y - min.Y) / max.Y;
-			return Vector2(u, v);
-		};
-
-		Vector2 minBound(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-		Vector2 maxBound(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
-		for (const Vector2& pos : v)
-		{
-		    if (minBound.X > pos.X)
-		    {
-		        minBound.X = pos.X;
-		    }
-			if (minBound.Y > pos.Y)
-			{
-			    minBound.Y = pos.Y;
-			}
-
-			if (maxBound.X < pos.X)
-			{
-			    maxBound.X = pos.X;
-			}
-			if (maxBound.Y < pos.Y)
-			{
-			    maxBound.Y = pos.Y;
-			}
-		}
-
-		for (const Vector2& pos : v)
-		{
-		    uv.emplace_back(GetUV(minBound, maxBound, pos));
-		}
-
-	    i = {
-		    0, 1, 2,  0, 2, 3,  0, 3, 4,  0, 4, 5,  0, 5, 1,  // Inner Triangle
-			1, 6, 2,  2, 7, 3,  3, 8, 4,  4, 9, 5,  5, 10, 1  // Outer Triangle
-	    };
-
-	    starMesh.CalculateBounds(); 
-	}
+	quadMesh.CalculateBounds();
 
 	// 텍스쳐 로딩
-	Texture& diffuseTexture = CreateTexture(GameEngine::DiffuseTexture, GameEngine::SteveTexturePath);
-	if (!diffuseTexture.IsIntialized())
+	if (!CreateTexture(GameEngine::SunTexture, SunTexturePath).IsIntialized())
 	{
 		return false;
 	}
 
-	Texture& waterTexture = CreateTexture(GameEngine::WaterTexture, GameEngine::WaterTexturePath);
-	if (!waterTexture.IsIntialized())
+	if (!CreateTexture(GameEngine::MercuryTexture, MercuryTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::VenusTexture, VenusTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::EarthTexture, EarthTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::MoonTexture, MoonTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::MarsTexture, MarsTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::DeimosTexture, DeimosTexturePath).IsIntialized())
+	{
+		return false;
+	}
+
+	if (!CreateTexture(GameEngine::PhobosTexture, PhobosTexturePath).IsIntialized())
 	{
 		return false;
 	}
@@ -193,37 +172,112 @@ bool GameEngine::LoadResources()
 
 bool GameEngine::LoadScene()
 {
-	constexpr float playerScale = 30.f;
-	constexpr size_t starCount = 100;
+	static const float sunScale = 70.f;
+	static const float mercuryScale = 15.f;
+	static const float venusScale = 20.f;
+	static const float earthScale = 25.f;
+	static const float moonScale = 10.f;
+	static const float marsScale = 18.f;
+	static const float deimosScale = 10.f;
+	static const float phobosScale = 10.f;
 
-	constexpr float minStarPos = -500.f;
-	constexpr float maxStarPos = 500.f;
-	constexpr float minStarScale = 10.f;
-	constexpr float maxStarScale = 20.f;
+	static const Vector2 mercuryOffset(70.f, 0.f);
+	static const Vector2 venusOffset(130.f, 0.f);
+	static const Vector2 earthOffset(200.f, 0.0f);
+	static const Vector2 moonOffset(230.f, 0.0f);
+	static const Vector2 marsOffset(300.f, 0.f);
+	static const Vector2 deimosOffset(320.f, 0.f);
+	static const Vector2 phobosOffset(340.f, 0.f);
 
-	GameObject& playerGO = CreateNewGameObject(GameEngine::PlayerGo);
-	playerGO.SetMesh(GameEngine::QuadMesh);
-	playerGO.GetTransform().SetScale(Vector2::One * playerScale);
-	playerGO.SetColor(LinearColor::Red);
+	// Sun
+	GameObject& goSun = CreateNewGameObject(GameEngine::SunGo);
+	goSun.SetMesh(GameEngine::QuadMesh);
+	goSun.GetTransform().SetWorldScale(Vector2::One * sunScale);
+	goSun.SetTexture(GameEngine::SunTexture);
 
-	std::random_device randomDevice;
-	std::mt19937 mersenneTwister(randomDevice());
-	std::uniform_real_distribution<float> posDist(minStarPos, maxStarPos);
-	std::uniform_real_distribution<float> scaleDist(minStarScale, maxStarScale);
+	// Mercury
+	GameObject& goMercuryPivot = CreateNewGameObject(GameEngine::MercuryPivotGo);
+	goMercuryPivot.GetTransform().SetWorldPosition(goSun.GetTransform().GetWorldPosition());
+	goMercuryPivot.SetParent(goSun);
 
-	for (size_t i = 0; i < starCount; ++i)
-	{
-		char name[32];
-		std::snprintf(name, sizeof(name), "Star%u", i);
-		name[sizeof(name) - 1] = '\0';
+	GameObject& goMercury = CreateNewGameObject(GameEngine::MercuryGo);
+	goMercury.SetMesh(GameEngine::QuadMesh);
+	goMercury.GetTransform().SetWorldPosition(mercuryOffset);
+	goMercury.GetTransform().SetWorldScale(Vector2::One * mercuryScale);
+	goMercury.SetParent(goMercuryPivot);
+	goMercury.SetTexture(GameEngine::MercuryTexture);
 
-		const float scale = scaleDist(mersenneTwister);
-	    GameObject& star = CreateNewGameObject(name);
-		star.SetMesh(GameEngine::StarMesh);
-		star.GetTransform().SetPosition(Vector2(posDist(mersenneTwister), posDist(mersenneTwister)));
-		star.GetTransform().SetScale(Vector2(scale, scale));
-		star.SetColor(LinearColor::Blue);
-	}
+	// Venus
+	GameObject& goVenusPivot = CreateNewGameObject(GameEngine::VenusPivotGo);
+	goVenusPivot.GetTransform().SetWorldPosition(goSun.GetTransform().GetWorldPosition());
+	goVenusPivot.SetParent(goSun);
+
+	GameObject& goVenus = CreateNewGameObject(GameEngine::VenusGo);
+	goVenus.SetMesh(GameEngine::QuadMesh);
+	goVenus.GetTransform().SetWorldPosition(venusOffset);
+	goVenus.GetTransform().SetWorldScale(Vector2::One * venusScale);
+	goVenus.SetParent(goVenusPivot);
+	goVenus.SetTexture(GameEngine::VenusTexture);
+
+	// Earth
+	GameObject& goEarthPivot = CreateNewGameObject(GameEngine::EarthPivotGo);
+	goEarthPivot.GetTransform().SetWorldPosition(goSun.GetTransform().GetWorldPosition());
+	goEarthPivot.SetParent(goSun);
+
+	GameObject& goEarth = CreateNewGameObject(GameEngine::EarthGo);
+	goEarth.SetMesh(GameEngine::QuadMesh);
+	goEarth.GetTransform().SetWorldPosition(earthOffset);
+	goEarth.GetTransform().SetWorldScale(Vector2::One * earthScale);
+	goEarth.SetParent(goEarthPivot);
+	goEarth.SetTexture(GameEngine::EarthTexture);
+
+	// Moon
+	GameObject& goMoonPivot = CreateNewGameObject(GameEngine::MoonPivotGo);
+	goMoonPivot.GetTransform().SetWorldPosition(goEarth.GetTransform().GetWorldPosition());
+	goMoonPivot.SetParent(goEarth);
+
+	GameObject& goMoon = CreateNewGameObject(GameEngine::MoonGo);
+	goMoon.SetMesh(GameEngine::QuadMesh);
+	goMoon.GetTransform().SetWorldPosition(moonOffset);
+	goMoon.GetTransform().SetWorldScale(Vector2::One * moonScale);
+	goMoon.SetParent(goMoonPivot);
+	goMoon.SetTexture(GameEngine::MoonTexture);
+
+	// Mars
+	GameObject& goMarsPivot = CreateNewGameObject(GameEngine::MarsPivotGo);
+	goMarsPivot.GetTransform().SetWorldPosition(goSun.GetTransform().GetWorldPosition());
+	goMarsPivot.SetParent(goSun);
+
+	GameObject& goMars = CreateNewGameObject(GameEngine::MarsGo);
+	goMars.SetMesh(GameEngine::QuadMesh);
+	goMars.GetTransform().SetWorldPosition(marsOffset);
+	goMars.GetTransform().SetWorldScale(Vector2::One * marsScale);
+	goMars.SetParent(goMarsPivot);
+	goMars.SetTexture(GameEngine::MarsTexture);
+
+	// Deimos
+	GameObject& goDeimosPivot = CreateNewGameObject(GameEngine::DeimosPivotGo);
+	goDeimosPivot.GetTransform().SetWorldPosition(goMars.GetTransform().GetWorldPosition());
+	goDeimosPivot.SetParent(goMars);
+
+	GameObject& goDeimos = CreateNewGameObject(GameEngine::DeimosGo);
+	goDeimos.SetMesh(GameEngine::QuadMesh);
+	goDeimos.GetTransform().SetWorldPosition(deimosOffset);
+	goDeimos.GetTransform().SetWorldScale(Vector2::One * deimosScale);
+	goDeimos.SetParent(goDeimosPivot);
+	goDeimos.SetTexture(GameEngine::DeimosTexture);
+
+	// Phobos
+	GameObject& goPhobosPivot = CreateNewGameObject(GameEngine::PhobosPivotGo);
+	goPhobosPivot.GetTransform().SetWorldPosition(goMars.GetTransform().GetWorldPosition());
+	goPhobosPivot.SetParent(goMars);
+
+	GameObject& goPhobos = CreateNewGameObject(GameEngine::PhobosGo);
+	goPhobos.SetMesh(GameEngine::QuadMesh);
+	goPhobos.GetTransform().SetWorldPosition(phobosOffset);
+	goPhobos.GetTransform().SetWorldScale(Vector2::One * phobosScale);
+	goPhobos.SetParent(goPhobosPivot);
+	goPhobos.SetTexture(GameEngine::PhobosTexture);
 
 	return true;
 }

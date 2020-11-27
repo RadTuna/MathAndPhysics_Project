@@ -42,7 +42,8 @@ private:
 
 FORCEINLINE void WindowsRSI::SetPixel(const ScreenPoint& InPos, const LinearColor& InColor)
 {
-	SetPixelOpaque(InPos, InColor);
+	//SetPixelOpaque(InPos, InColor);
+	SetPixelAlphaBlending(InPos, InColor);
 }
 
 }

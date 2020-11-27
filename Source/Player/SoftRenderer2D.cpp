@@ -6,96 +6,109 @@ using namespace CK::DD;
 // 그리드 그리기
 void SoftRenderer::DrawGrid2D()
 {
-    auto& r = GetRenderer();
-    const auto& g = Get2DGameEngine();
+	auto& r = GetRenderer();
+	const auto& g = Get2DGameEngine();
 
-    // 그리드 색상
-    LinearColor gridColor(LinearColor(0.8f, 0.8f, 0.8f, 0.3f));
+	// 그리드 색상
+	LinearColor gridColor(LinearColor(0.8f, 0.8f, 0.8f, 0.3f));
 
-    // 뷰의 영역 계산
-    Vector2 viewPos = g.GetMainCamera().GetTransform().GetPosition();
-    Vector2 extent = Vector2(_ScreenSize.X * 0.5f, _ScreenSize.Y * 0.5f);
+	// 뷰의 영역 계산
+	Vector2 viewPos = g.GetMainCamera().GetTransform().GetWorldPosition();
+	Vector2 extent = Vector2(_ScreenSize.X * 0.5f, _ScreenSize.Y * 0.5f);
 
-    // 좌측 하단에서부터 격자 그리기
-    int xGridCount = _ScreenSize.X / _Grid2DUnit;
-    int yGridCount = _ScreenSize.Y / _Grid2DUnit;
+	// 좌측 하단에서부터 격자 그리기
+	int xGridCount = _ScreenSize.X / _Grid2DUnit;
+	int yGridCount = _ScreenSize.Y / _Grid2DUnit;
 
-    // 그리드가 시작되는 좌하단 좌표 값 계산
-    Vector2 minPos = viewPos - extent;
-    Vector2 minGridPos = Vector2(ceilf(minPos.X / (float)_Grid2DUnit), ceilf(minPos.Y / (float)_Grid2DUnit)) * (float)_Grid2DUnit;
-    ScreenPoint gridBottomLeft = ScreenPoint::ToScreenCoordinate(_ScreenSize, minGridPos - viewPos);
+	// 그리드가 시작되는 좌하단 좌표 값 계산
+	Vector2 minPos = viewPos - extent;
+	Vector2 minGridPos = Vector2(ceilf(minPos.X / (float)_Grid2DUnit), ceilf(minPos.Y / (float)_Grid2DUnit)) * (float)_Grid2DUnit;
+	ScreenPoint gridBottomLeft = ScreenPoint::ToScreenCoordinate(_ScreenSize, minGridPos - viewPos);
 
-    for (int ix = 0; ix < xGridCount; ++ix)
-    {
-        r.DrawFullVerticalLine(gridBottomLeft.X + ix * _Grid2DUnit, gridColor);
-    }
+	for (int ix = 0; ix < xGridCount; ++ix)
+	{
+		r.DrawFullVerticalLine(gridBottomLeft.X + ix * _Grid2DUnit, gridColor);
+	}
 
-    for (int iy = 0; iy < yGridCount; ++iy)
-    {
-        r.DrawFullHorizontalLine(gridBottomLeft.Y - iy * _Grid2DUnit, gridColor);
-    }
+	for (int iy = 0; iy < yGridCount; ++iy)
+	{
+		r.DrawFullHorizontalLine(gridBottomLeft.Y - iy * _Grid2DUnit, gridColor);
+	}
 
-    // 월드의 원점
-    ScreenPoint worldOrigin = ScreenPoint::ToScreenCoordinate(_ScreenSize, -viewPos);
-    r.DrawFullHorizontalLine(worldOrigin.Y, LinearColor::Red);
-    r.DrawFullVerticalLine(worldOrigin.X, LinearColor::Green);
+	// 월드의 원점
+	ScreenPoint worldOrigin = ScreenPoint::ToScreenCoordinate(_ScreenSize, -viewPos);
+	r.DrawFullHorizontalLine(worldOrigin.Y, LinearColor::Red);
+	r.DrawFullVerticalLine(worldOrigin.X, LinearColor::Green);
 }
 
-// 실습을 위한 변수
-Vector2 deltaPosition;
-float deltaDegree = 0.f;
-float currentScale = 10.f;
 
 // 게임 로직
 void SoftRenderer::Update2D(float InDeltaSeconds)
 {
-    auto& g = Get2DGameEngine();
-    const InputManager& input = g.GetInputManager();
+	// 기본 레퍼런스
+	GameEngine& g = Get2DGameEngine();
+	const InputManager& input = g.GetInputManager();
 
-	static float moveSpeed = 200.f;
-	static float rotateSpeed = 180.f;
-	static float scaleSpeed = 180.f;
-    static float cameraLagSpeed = 2.f;
+	// 기본 설정 변수
+	static float orbitSpeedMercury = 300.f;
+	static float rotateSpeedMercury = 200.f;
+	static float orbitSpeedVenus = 80.f;
+	static float rotateSpeedVenus = 50.f;
+	static float orbitSpeedEarth = 100.f;
+	static float rotateSpeedEarth = 30.f;
+	static float orbitSpeedMoon = 500.f; // 30.f + 500.f = 530.f
+	static float rotateSpeedMoon = 50.f;
+	static float orbitSpeedMars = 100.f;
+	static float rotateSpeedMars = 50.f;
+	static float orbitSpeedDeimos = 300.f; // 50.f + 300.f = 350.f
+	static float rotateSpeedDeimos = 20.f;
+	static float orbitSpeedPhobos = 1000.f; // 50.f + 1000.f = 1050.f
+	static float rotateSpeedPhobos = 10.f;
 
-	// 플레이어 게임 오브젝트 트랜스폼의 변경
-	GameObject& goPlayer = g.GetGameObject(GameEngine::PlayerGo);
-	assert(goPlayer.IsValid());
+	// 게임 오브젝트와 카메라 오브젝트
+	GameObject& goMercury = g.GetGameObject(GameEngine::MercuryGo);
+	GameObject& goMercuryPivot = g.GetGameObject(GameEngine::MercuryPivotGo);
+	GameObject& goVenus = g.GetGameObject(GameEngine::VenusGo);
+	GameObject& goVenusPivot = g.GetGameObject(GameEngine::VenusPivotGo);
+	GameObject& goEarth = g.GetGameObject(GameEngine::EarthGo);
+	GameObject& goEarthPivot = g.GetGameObject(GameEngine::EarthPivotGo);
+	GameObject& goMoon = g.GetGameObject(GameEngine::MoonGo);
+	GameObject& goMoonPivot = g.GetGameObject(GameEngine::MoonPivotGo);
+	GameObject& goMars = g.GetGameObject(GameEngine::MarsGo);
+	GameObject& goMarsPivot = g.GetGameObject(GameEngine::MarsPivotGo);
+	GameObject& goDeimos = g.GetGameObject(GameEngine::DeimosGo);
+	GameObject& goDeimosPivot = g.GetGameObject(GameEngine::DeimosPivotGo);
+	GameObject& goPhobos = g.GetGameObject(GameEngine::PhobosGo);
+	GameObject& goPhobosPivot = g.GetGameObject(GameEngine::PhobosPivotGo);
 
-	// 입력에 따른 플레이어 위치와 크기의 변경
-	TransformComponent& playerTransform = goPlayer.GetTransform();
-    Vector2 moveVector = playerTransform.GetLocalX() * input.GetAxis(InputAxis::XAxis) + playerTransform.GetLocalY() * input.GetAxis(InputAxis::YAxis);
-    moveVector = moveVector.Normalize();
-
-	playerTransform.AddPosition(moveVector * moveSpeed * InDeltaSeconds);
-	playerTransform.AddRotation(input.GetAxis(InputAxis::WAxis) * rotateSpeed * InDeltaSeconds);
-	float newScale = Math::Clamp(playerTransform.GetScale().X + scaleSpeed * input.GetAxis(InputAxis::ZAxis) * InDeltaSeconds, 15.f, 30.f);
-	playerTransform.SetScale(Vector2::One * newScale);
-
-    CameraObject& camera = g.GetMainCamera();
-
-    TransformComponent& cameraTransform = camera.GetTransform();
-    cameraTransform.SetPosition(Vector2::Interpolation(cameraTransform.GetPosition(), playerTransform.GetPosition(), cameraLagSpeed, InDeltaSeconds));
-    cameraTransform.SetRotation(Math::InterpolateFloat(cameraTransform.GetRotation(), playerTransform.GetRotation(), cameraLagSpeed, InDeltaSeconds));
+	// 각 행성에 회전 부여
+	goMercury.GetTransform().AddLocalRotation(rotateSpeedMercury * InDeltaSeconds);
+	goMercuryPivot.GetTransform().AddLocalRotation(orbitSpeedMercury * InDeltaSeconds);
+	goVenus.GetTransform().AddLocalRotation(rotateSpeedVenus * InDeltaSeconds);
+	goVenusPivot.GetTransform().AddLocalRotation(orbitSpeedVenus * InDeltaSeconds);
+	goEarth.GetTransform().AddLocalRotation(rotateSpeedEarth * InDeltaSeconds);
+	goEarthPivot.GetTransform().AddLocalRotation(orbitSpeedEarth * InDeltaSeconds);
+	goMoon.GetTransform().AddLocalRotation(rotateSpeedMoon * InDeltaSeconds);
+	goMoonPivot.GetTransform().AddLocalRotation(orbitSpeedMoon * InDeltaSeconds);
+	goMars.GetTransform().AddLocalRotation(rotateSpeedMars * InDeltaSeconds);
+	goMarsPivot.GetTransform().AddLocalRotation(orbitSpeedMars * InDeltaSeconds);
+	goDeimos.GetTransform().AddLocalRotation(rotateSpeedDeimos * InDeltaSeconds);
+	goDeimosPivot.GetTransform().AddLocalRotation(orbitSpeedDeimos * InDeltaSeconds);
+	goPhobos.GetTransform().AddLocalRotation(rotateSpeedPhobos * InDeltaSeconds);
+	goPhobosPivot.GetTransform().AddLocalRotation(orbitSpeedPhobos * InDeltaSeconds);
 }
 
 // 렌더링 로직
 void SoftRenderer::Render2D()
 {
-    RendererInterface& r = GetRenderer();
-    const GameEngine& g = Get2DGameEngine();
+	auto& r = GetRenderer();
+	const auto& g = Get2DGameEngine();
 
-    const Texture& staveTexture = g.GetTexture(GameEngine::DiffuseTexture);
-    const Texture& waterTexture = g.GetTexture(GameEngine::WaterTexture);
-    const Mesh& quadMesh = g.GetMesh(GameEngine::QuadMesh);
-    const Mesh& starMesh = g.GetMesh(GameEngine::StarMesh);
+	// 격자 그리기
+	DrawGrid2D();
 
-    const CameraObject& camera = g.GetMainCamera();
-
-    // 격자 그리기
-    // DrawGrid2D();
-
-    // 전체 그릴 물체의 수
-	const size_t totalObjectCount = g.GetScene().size();
+	// 카메라의 뷰 행렬
+	Matrix3x3 viewMatrix = g.GetMainCamera().GetViewMatrix();
 
 	// 랜덤하게 생성된 모든 게임 오브젝트들
 	for (auto it = g.SceneBegin(); it != g.SceneEnd(); ++it)
@@ -108,31 +121,19 @@ void SoftRenderer::Render2D()
 		}
 
 		const Mesh& mesh = g.GetMesh(gameObject.GetMeshKey());
+		const Texture& texture = g.GetTexture(gameObject.GetTextureKey());
 		const TransformComponent& transform = gameObject.GetTransform();
-		Matrix3x3 finalMatrix = camera.GetViewMatrix() * transform.GetModelingMatrix();
+		Matrix3x3 finalMatrix = viewMatrix * transform.GetWorldMatrix();
 
-		if (gameObject != GameEngine::PlayerGo)
-		{
-			DrawMesh2D(quadMesh, staveTexture, finalMatrix, gameObject.GetColor());
-
-            r.PushStatisticText("Player Position : " + transform.GetPosition().ToString());
-			r.PushStatisticText("Player Rotation : " + std::to_string(transform.GetRotation()) + " (deg)");
-			r.PushStatisticText("Player Scale : " + std::to_string(transform.GetScale().X));
-		}
-		else
-		{
-			DrawMesh2D(starMesh, waterTexture, finalMatrix, gameObject.GetColor());
-		}
+		DrawMesh2D(mesh, texture, finalMatrix, gameObject.GetColor());
 	}
-
-    r.PushStatisticText("Total Game Objects : " + std::to_string(totalObjectCount));
 }
 
 void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTexture, const Matrix3x3& InMatrix, const LinearColor& InColor)
 {
-    const size_t vertexCount = InMesh.GetVertices().size();
-	const size_t indexCount = InMesh.GetIndices().size();
-	const size_t triangleCount = indexCount / 3;
+	size_t vertexCount = InMesh.GetVertices().size();
+	size_t indexCount = InMesh.GetIndices().size();
+	size_t triangleCount = indexCount / 3;
 
 	// 렌더러가 사용할 정점 버퍼와 인덱스 버퍼로 변환
 	std::vector<Vertex2D> vertices(vertexCount);
@@ -176,12 +177,12 @@ void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTex
 
 void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const Texture& InTexture, const LinearColor& InColor, FillMode InFillMode)
 {
-    auto& r = GetRenderer();
+	auto& r = GetRenderer();
 	const GameEngine& g = Get2DGameEngine();
 
-    if (IsWireframeDrawing())
-    {
-        LinearColor finalColor = _WireframeColor;
+	if (IsWireframeDrawing())
+	{
+		LinearColor finalColor = _WireframeColor;
 		if (InColor != LinearColor::Error)
 		{
 			finalColor = InColor;
@@ -190,70 +191,61 @@ void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const T
 		r.DrawLine(InVertices[0].Position, InVertices[1].Position, finalColor);
 		r.DrawLine(InVertices[0].Position, InVertices[2].Position, finalColor);
 		r.DrawLine(InVertices[1].Position, InVertices[2].Position, finalColor);
-    }
-    else
-    {
-        const Vector2 vectorU = InVertices[0].Position - InVertices[2].Position;
-        const Vector2 vectorV = InVertices[1].Position - InVertices[2].Position;
-        const float dotUV = vectorU.Dot(vectorV);
-        const float dotUU = vectorU.Dot(vectorU);
-        const float dotVV = vectorV.Dot(vectorV);
-        const float denominator = 1.f / (dotUV * dotUV - dotUU * dotVV);
+	}
+	else
+	{
+		// 삼각형 칠하기
+		// 삼각형의 영역 설정
+		Vector2 minPos(Math::Min3(InVertices[0].Position.X, InVertices[1].Position.X, InVertices[2].Position.X), Math::Min3(InVertices[0].Position.Y, InVertices[1].Position.Y, InVertices[2].Position.Y));
+		Vector2 maxPos(Math::Max3(InVertices[0].Position.X, InVertices[1].Position.X, InVertices[2].Position.X), Math::Max3(InVertices[0].Position.Y, InVertices[1].Position.Y, InVertices[2].Position.Y));
 
-        const Vector2 minPos(
-            Math::Min3(InVertices[0].Position.X, InVertices[1].Position.X, InVertices[2].Position.X), 
-            Math::Min3(InVertices[0].Position.Y, InVertices[1].Position.Y, InVertices[2].Position.Y));
-        const Vector2 maxPos(
-            Math::Max3(InVertices[0].Position.X, InVertices[1].Position.X, InVertices[2].Position.X), 
-            Math::Max3(InVertices[0].Position.Y, InVertices[1].Position.Y, InVertices[2].Position.Y));
+		// 무게중심좌표를 위해 점을 벡터로 변환
+		Vector2 u = InVertices[1].Position - InVertices[0].Position;
+		Vector2 v = InVertices[2].Position - InVertices[0].Position;
 
-        // 화면상의 점 구하기
-        ScreenPoint lowerLeftPoint = ScreenPoint::ToScreenCoordinate(_ScreenSize, minPos);
-        ScreenPoint upperRightPoint = ScreenPoint::ToScreenCoordinate(_ScreenSize, maxPos);
+		// 공통 분모 값 ( uu * vv - uv * uv )
+		float udotv = u.Dot(v);
+		float vdotv = v.Dot(v);
+		float udotu = u.Dot(u);
+		float denominator = udotv * udotv - vdotv * udotu;
 
-        // 두 점이 화면 밖을 벗어나는 경우 클리핑 처리
-        lowerLeftPoint.X = Math::Max(0, lowerLeftPoint.X);
-        lowerLeftPoint.Y = Math::Min(_ScreenSize.Y, lowerLeftPoint.Y);
-        upperRightPoint.X = Math::Min(_ScreenSize.X, upperRightPoint.X);
-        upperRightPoint.Y = Math::Max(0, upperRightPoint.Y);
+		// 퇴화 삼각형 판정.
+		if (Math::EqualsInTolerance(denominator, 0.f))
+		{
+			return;
+		}
 
-        // 삼각형을 둘러싼 사각형 영역의 점을 모두 Loop
-        for (int x = lowerLeftPoint.X; x <= upperRightPoint.X; ++x)
-        {
-            for (int y = upperRightPoint.Y; y <= lowerLeftPoint.Y; ++y)
-            {
-                ScreenPoint fragment = ScreenPoint(x, y);
-                Vector2 pointToTest = fragment.ToCartesianCoordinate(_ScreenSize);
+		float invDenominator = 1.f / denominator;
 
-                // 해당 점이 컨벡스 조건을 만족할 때만 점 찍기
-                const Vector2 vectorW = pointToTest - InVertices[2].Position;
+		ScreenPoint lowerLeftPoint = ScreenPoint::ToScreenCoordinate(_ScreenSize, minPos);
+		ScreenPoint upperRightPoint = ScreenPoint::ToScreenCoordinate(_ScreenSize, maxPos);
 
-                const float dotWU = vectorW.Dot(vectorU);
-                const float dotWV = vectorW.Dot(vectorV);
+		// 두 점이 화면 밖을 벗어나는 경우 클리핑 처리
+		lowerLeftPoint.X = Math::Max(0, lowerLeftPoint.X);
+		lowerLeftPoint.Y = Math::Min(_ScreenSize.Y, lowerLeftPoint.Y);
+		upperRightPoint.X = Math::Min(_ScreenSize.X, upperRightPoint.X);
+		upperRightPoint.Y = Math::Max(0, upperRightPoint.Y);
 
-                const float weightS = (dotWV * dotUV - dotWU * dotVV) * denominator;
-                const float weightT = (dotWU * dotUV - dotWV * dotUU) * denominator;
-                const float weightU = 1.f - weightS - weightT;
+		// 삼각형 영역 내 모든 점을 점검하고 색칠
+		for (int x = lowerLeftPoint.X; x <= upperRightPoint.X; ++x)
+		{
+			for (int y = upperRightPoint.Y; y <= lowerLeftPoint.Y; ++y)
+			{
+				ScreenPoint fragment = ScreenPoint(x, y);
+				Vector2 pointToTest = fragment.ToCartesianCoordinate(_ScreenSize);
+				Vector2 w = pointToTest - InVertices[0].Position;
+				float wdotu = w.Dot(u);
+				float wdotv = w.Dot(v);
 
-                const bool bIsBoundS = weightS >= 0.f && weightS <= 1.f;
-                const bool bIsBoundT = weightT >= 0.f && weightT <= 1.f;
-                const bool bIsBoundU = weightU >= 0.f && weightU <= 1.f;
-                if (bIsBoundS && bIsBoundT && bIsBoundU)
-                {
-                    LinearColor finalColor = LinearColor::White;
-                    if (InFillMode == FillMode::Texture)
-                    {
-                        const Vector2 uv = InVertices[0].UV * weightS + InVertices[1].UV * weightT + InVertices[2].UV * weightU;
-                        finalColor = InTexture.GetSample(uv);
-                    }
-                    else if (InFillMode == FillMode::Color)
-                    {
-                        finalColor = InColor;
-                    }
-
-                    r.DrawPoint(pointToTest, FragmentShader2D(finalColor, LinearColor::White));
-                }
-            }
-        }
-    }
+				float s = (wdotv * udotv - wdotu * vdotv) * invDenominator;
+				float t = (wdotu * udotv - wdotv * udotu) * invDenominator;
+				float oneMinusST = 1.f - s - t;
+				if (((s >= 0.f) && (s <= 1.f)) && ((t >= 0.f) && (t <= 1.f)) && ((oneMinusST >= 0.f) && (oneMinusST <= 1.f)))
+				{
+					Vector2 targetUV = InVertices[0].UV * oneMinusST + InVertices[1].UV * s + InVertices[2].UV * t;
+					r.DrawPoint(fragment, FragmentShader2D(InTexture.GetSample(targetUV), LinearColor::White));
+				}
+			}
+		}
+	}
 }

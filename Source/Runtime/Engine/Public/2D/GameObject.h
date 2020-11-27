@@ -23,11 +23,17 @@ public:
 	// 트랜스폼
 	TransformComponent& GetTransform() { return _Transform; }
 	const TransformComponent& GetTransform() const { return _Transform; }
+	void SetParent(GameObject& InGameObject) { _Transform.SetParent(InGameObject.GetTransform()); }
 
 	// 메시
 	void SetMesh(const std::size_t& InMeshKey) { _MeshKey = InMeshKey; }
 	bool HasMesh() const { return _MeshKey != Math::InvalidHash; }
 	FORCEINLINE std::size_t GetMeshKey() const { return _MeshKey; }
+
+	// 텍스쳐
+	void SetTexture(const std::size_t& InTextureKey) { _TextureKey = InTextureKey; }
+	bool HasTexture() const { return _TextureKey != Math::InvalidHash; }
+	FORCEINLINE std::size_t GetTextureKey() const { return _TextureKey; }
 
 	// 색상
 	void SetColor(const LinearColor& InColor) { _Color = InColor; }
@@ -53,6 +59,7 @@ private:
 	std::size_t _Hash = Math::InvalidHash;
 	std::string _Name;
 	std::size_t _MeshKey = Math::InvalidHash;
+	std::size_t _TextureKey = Math::InvalidHash;
 	TransformComponent _Transform;
 	LinearColor _Color = LinearColor::Error;
 };

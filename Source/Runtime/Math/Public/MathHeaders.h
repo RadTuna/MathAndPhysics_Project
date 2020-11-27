@@ -32,6 +32,7 @@
 
 #include "Quaternion.h"
 
+#include "Transform2D.h"
 #include "Transform.h"
 
 #include "Plane.h"

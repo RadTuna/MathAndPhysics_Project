@@ -32,17 +32,7 @@ private:
 
 FORCEINLINE Matrix3x3 CameraObject::GetViewMatrix() const
 {
-	Matrix3x3 viewMatrix = Matrix3x3(
-		Vector3(_Transform.GetLocalX(), 0.f), 
-		Vector3(_Transform.GetLocalY(), 0.f), 
-		Vector3::UnitZ).Tranpose();
-
-	viewMatrix.Cols[2] = Vector3(
-		_Transform.GetLocalX().Dot(-_Transform.GetPosition()),
-		_Transform.GetLocalY().Dot(-_Transform.GetPosition()),
-		1.f);
-
-	return viewMatrix;
+	return Matrix3x3(Vector3::UnitX, Vector3::UnitY, Vector3(-_Transform.GetWorldPosition()));
 }
 
 }

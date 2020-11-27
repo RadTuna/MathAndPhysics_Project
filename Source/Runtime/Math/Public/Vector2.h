@@ -36,7 +36,6 @@ public:
 	FORCEINLINE float AngleInDegree() const;
 	FORCEINLINE Vector2 ToPolarCoordinate() const;
 	FORCEINLINE constexpr Vector2 ToCartesianCoordinate() const;
-	static Vector2 Interpolation(const Vector2& current, const Vector2& target, float speed, float deltaTime);
 
 	std::string ToString() const;
 
