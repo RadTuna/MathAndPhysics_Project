@@ -52,33 +52,13 @@ private:
 public: // 주요 키 값
 	// 메시
 	static const std::size_t QuadMesh;
+	static const std::size_t CharacterMesh;
 
 	// 게임 오브젝트
-	static const std::string SunGo;
-	static const std::string MercuryPivotGo;
-	static const std::string MercuryGo;
-	static const std::string VenusPivotGo;
-	static const std::string VenusGo;
-	static const std::string EarthPivotGo;
-	static const std::string EarthGo;
-	static const std::string MoonPivotGo;
-	static const std::string MoonGo;
-	static const std::string MarsPivotGo;
-	static const std::string MarsGo;
-	static const std::string DeimosPivotGo;
-	static const std::string DeimosGo;
-	static const std::string PhobosPivotGo;
-	static const std::string PhobosGo;
+	static const std::string CharacterGo;
 
 	// 텍스쳐
-	static const std::size_t SunTexture;
-	static const std::size_t MercuryTexture;
-	static const std::size_t VenusTexture;
-	static const std::size_t EarthTexture;
-	static const std::size_t MoonTexture;
-	static const std::size_t MarsTexture;
-	static const std::size_t DeimosTexture;
-	static const std::size_t PhobosTexture;
+	static const std::size_t CharacterTexture;
 
 private:
 	bool _IsInitialized = false;

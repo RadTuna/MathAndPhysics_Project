@@ -49,53 +49,9 @@ void SoftRenderer::Update2D(float InDeltaSeconds)
 	GameEngine& g = Get2DGameEngine();
 	const InputManager& input = g.GetInputManager();
 
-	// 기본 설정 변수
-	static float orbitSpeedMercury = 300.f;
-	static float rotateSpeedMercury = 200.f;
-	static float orbitSpeedVenus = 80.f;
-	static float rotateSpeedVenus = 50.f;
-	static float orbitSpeedEarth = 100.f;
-	static float rotateSpeedEarth = 30.f;
-	static float orbitSpeedMoon = 500.f; // 30.f + 500.f = 530.f
-	static float rotateSpeedMoon = 50.f;
-	static float orbitSpeedMars = 100.f;
-	static float rotateSpeedMars = 50.f;
-	static float orbitSpeedDeimos = 300.f; // 50.f + 300.f = 350.f
-	static float rotateSpeedDeimos = 20.f;
-	static float orbitSpeedPhobos = 1000.f; // 50.f + 1000.f = 1050.f
-	static float rotateSpeedPhobos = 10.f;
-
-	// 게임 오브젝트와 카메라 오브젝트
-	GameObject& goMercury = g.GetGameObject(GameEngine::MercuryGo);
-	GameObject& goMercuryPivot = g.GetGameObject(GameEngine::MercuryPivotGo);
-	GameObject& goVenus = g.GetGameObject(GameEngine::VenusGo);
-	GameObject& goVenusPivot = g.GetGameObject(GameEngine::VenusPivotGo);
-	GameObject& goEarth = g.GetGameObject(GameEngine::EarthGo);
-	GameObject& goEarthPivot = g.GetGameObject(GameEngine::EarthPivotGo);
-	GameObject& goMoon = g.GetGameObject(GameEngine::MoonGo);
-	GameObject& goMoonPivot = g.GetGameObject(GameEngine::MoonPivotGo);
-	GameObject& goMars = g.GetGameObject(GameEngine::MarsGo);
-	GameObject& goMarsPivot = g.GetGameObject(GameEngine::MarsPivotGo);
-	GameObject& goDeimos = g.GetGameObject(GameEngine::DeimosGo);
-	GameObject& goDeimosPivot = g.GetGameObject(GameEngine::DeimosPivotGo);
-	GameObject& goPhobos = g.GetGameObject(GameEngine::PhobosGo);
-	GameObject& goPhobosPivot = g.GetGameObject(GameEngine::PhobosPivotGo);
-
-	// 각 행성에 회전 부여
-	goMercury.GetTransform().AddLocalRotation(rotateSpeedMercury * InDeltaSeconds);
-	goMercuryPivot.GetTransform().AddLocalRotation(orbitSpeedMercury * InDeltaSeconds);
-	goVenus.GetTransform().AddLocalRotation(rotateSpeedVenus * InDeltaSeconds);
-	goVenusPivot.GetTransform().AddLocalRotation(orbitSpeedVenus * InDeltaSeconds);
-	goEarth.GetTransform().AddLocalRotation(rotateSpeedEarth * InDeltaSeconds);
-	goEarthPivot.GetTransform().AddLocalRotation(orbitSpeedEarth * InDeltaSeconds);
-	goMoon.GetTransform().AddLocalRotation(rotateSpeedMoon * InDeltaSeconds);
-	goMoonPivot.GetTransform().AddLocalRotation(orbitSpeedMoon * InDeltaSeconds);
-	goMars.GetTransform().AddLocalRotation(rotateSpeedMars * InDeltaSeconds);
-	goMarsPivot.GetTransform().AddLocalRotation(orbitSpeedMars * InDeltaSeconds);
-	goDeimos.GetTransform().AddLocalRotation(rotateSpeedDeimos * InDeltaSeconds);
-	goDeimosPivot.GetTransform().AddLocalRotation(orbitSpeedDeimos * InDeltaSeconds);
-	goPhobos.GetTransform().AddLocalRotation(rotateSpeedPhobos * InDeltaSeconds);
-	goPhobosPivot.GetTransform().AddLocalRotation(orbitSpeedPhobos * InDeltaSeconds);
+	// Character game object
+	GameObject& characterGo = g.GetGameObject(GameEngine::CharacterGo);
+	characterGo.GetTransform().SetLocalPosition(Vector2(0.f, -140.f));
 }
 
 // 렌더링 로직
@@ -243,7 +199,7 @@ void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const T
 				if (((s >= 0.f) && (s <= 1.f)) && ((t >= 0.f) && (t <= 1.f)) && ((oneMinusST >= 0.f) && (oneMinusST <= 1.f)))
 				{
 					Vector2 targetUV = InVertices[0].UV * oneMinusST + InVertices[1].UV * s + InVertices[2].UV * t;
-					r.DrawPoint(fragment, FragmentShader2D(InTexture.GetSample(targetUV), LinearColor::White));
+					r.DrawPoint(fragment, FragmentShader2D(InTexture.GetSample(targetUV), LinearColor::Gray));
 				}
 			}
 		}
