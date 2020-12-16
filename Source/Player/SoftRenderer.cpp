@@ -59,6 +59,15 @@ void SoftRenderer::OnTick()
 				assert(false);
 				return;
 			}
+
+			if (_GameEngineType == GameEngineType::DD)
+			{
+				LoadScene2D();
+			}
+			else
+			{
+				LoadScene3D();
+			}
 		}
 
 		_AllInitialized = _RendererInitialized && _PerformanceCheckInitialized && _GameEngineInitialized;
@@ -85,6 +94,7 @@ void SoftRenderer::OnTick()
 			if (_GameEngineType == GameEngineType::DD)
 			{
 				Update2D(_FrameTime / 1000.f);
+				LateUpdate2D(_FrameTime / 1000.f);
 				Render2D();
 			}
 			else

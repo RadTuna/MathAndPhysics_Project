@@ -39,7 +39,7 @@ public:
 	FORCEINLINE CameraObject& GetMainCamera() { return _MainCamera; }
 	FORCEINLINE const CameraObject& GetMainCamera() const { return _MainCamera; }
 
-	// 메인 텍스쳐
+	// 메인 텍스처
 	FORCEINLINE const Texture& GetTexture(const std::size_t& InTextureKey) const { return *_Textures.at(InTextureKey).get(); }
 
 	// 본을 그리기 위한 목록
@@ -47,30 +47,13 @@ public:
 
 private:
 	bool LoadResources();
-	bool LoadScene();
 
 public: // 주요 키 값
-	// 본
-	static const std::string RootBone;
-	static const std::string PelvisBone;
-	static const std::string SpineBone;
-	static const std::string LeftArmBone;
-	static const std::string RightArmBone;
-	static const std::string NeckBone;
-	static const std::string LeftLegBone;
-	static const std::string RightLegBone;
-
 	// 메시
-	static const std::size_t CharacterMesh;
-	static const std::size_t ArrowMesh;
-	static const std::size_t PlaneMesh;
+	static const std::size_t QuadMesh;
 
-	// 게임 오브젝트
-	static const std::string PlayerGo;
-	static const std::string CameraRigGo;
-
-	// 텍스쳐
-	static const std::size_t DiffuseTexture;
+	// 텍스처
+	static const std::size_t BaseTexture;
 	static const std::string SteveTexturePath;
 
 private:

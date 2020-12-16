@@ -15,6 +15,25 @@ enum class MeshType : UINT32
 	Skinned
 };
 
+enum class TextureFilterMode : UINT32
+{
+	Nearest = 0,
+	Linear,
+	Cubic
+};
+
+enum class TextureAddressMode : UINT32
+{
+	Repeat = 0,
+	Clamp
+};
+
+struct Weight
+{
+	std::vector<std::string> Bones;
+	std::vector<float> Values;
+};
+
 class EngineInterface
 {
 public:

@@ -1,10 +1,11 @@
 
 #include "Precompiled.h"
 #include "SoftRenderer.h"
+#include <random>
 using namespace CK::DD;
 
-// 그리드 그리기
-void SoftRenderer::DrawGrid2D()
+// 기즈모 그리기
+void SoftRenderer::DrawGizmo2D()
 {
 	auto& r = GetRenderer();
 	const auto& g = Get2DGameEngine();
@@ -35,23 +36,132 @@ void SoftRenderer::DrawGrid2D()
 		r.DrawFullHorizontalLine(gridBottomLeft.Y - iy * _Grid2DUnit, gridColor);
 	}
 
-	// 월드의 원점
 	ScreenPoint worldOrigin = ScreenPoint::ToScreenCoordinate(_ScreenSize, -viewPos);
 	r.DrawFullHorizontalLine(worldOrigin.Y, LinearColor::Red);
 	r.DrawFullVerticalLine(worldOrigin.X, LinearColor::Green);
 }
 
+// 게임 오브젝트 이름
+static const std::string PlayerGo("Player");
+
+// 씬 로딩
+void SoftRenderer::LoadScene2D()
+{
+	GameEngine& g = Get2DGameEngine();
+
+	// 플레이어
+	constexpr float playerScale = 2.f;
+
+	// 플레이어 설정
+	GameObject& goPlayer = g.CreateNewGameObject(PlayerGo);
+	goPlayer.SetMesh(GameEngine::CharacterMesh);
+	goPlayer.GetTransform().SetWorldPosition(Vector2(0.f, -100.f * playerScale));
+	goPlayer.GetTransform().SetWorldScale(Vector2::One * playerScale);
+	goPlayer.SetColor(LinearColor::White);
+}
+
+// 실습을 위한 변수
+Vector2 leftBonePosition;
+Vector2 rightBonePosition;
 
 // 게임 로직
 void SoftRenderer::Update2D(float InDeltaSeconds)
 {
-	// 기본 레퍼런스
-	GameEngine& g = Get2DGameEngine();
+	auto& g = Get2DGameEngine();
 	const InputManager& input = g.GetInputManager();
 
-	// Character game object
-	GameObject& characterGo = g.GetGameObject(GameEngine::CharacterGo);
-	characterGo.GetTransform().SetLocalPosition(Vector2(0.f, -140.f));
+	// 플레이어의 이동
+	static float moveSpeed = 100.f;
+	GameObject& goPlayer = g.GetGameObject(PlayerGo);
+	goPlayer.GetTransform().AddWorldPosition(Vector2(input.GetAxis(InputAxis::XAxis), input.GetAxis(InputAxis::YAxis)) * moveSpeed * InDeltaSeconds);
+}
+
+// 캐릭터 애니메이션 로직
+void SoftRenderer::LateUpdate2D(float InDeltaSeconds)
+{
+	auto& g = Get2DGameEngine();
+
+	// 기본 설정 변수
+	static float duration = 3.f;
+	static float elapsedTime = 0.f;
+
+	// 애니메이션을 위한 커브 생성 ( 0~1 SineWave )
+	elapsedTime = Math::Clamp(elapsedTime + InDeltaSeconds, 0.f, duration);
+	if (elapsedTime == duration)
+	{
+		elapsedTime = 0.f;
+	}
+	const float waveParam = elapsedTime * Math::TwoPI / duration;
+	const float sinWave = sinf(waveParam);
+	const float cosWave = cosf(waveParam);
+
+	// 플레이어의 이동
+	GameObject& goPlayer = g.GetGameObject(PlayerGo);
+	Mesh& m = g.GetMesh(goPlayer.GetMeshKey());
+	if (m.IsSkinnedMesh())
+	{
+		if (m.HasBone("Shoulder_L"))
+		{
+			m.GetBone("Shoulder_L").GetTransform().AddWorldRotation(1.f * -sinWave);
+		}
+		if (m.HasBone("Elbow_L"))
+		{
+		    m.GetBone("Elbow_L").GetTransform().AddWorldRotation(1.5f * -sinWave);
+		}
+
+		if (m.HasBone("Shoulder_R"))
+		{
+			m.GetBone("Shoulder_R").GetTransform().AddWorldRotation(1.f * sinWave);
+		}
+		if (m.HasBone("Elbow_R"))
+		{
+		    m.GetBone("Elbow_R").GetTransform().AddWorldRotation(1.5f * sinWave);
+		}
+
+	    if (m.HasBone("Spine_0"))
+		{
+			m.GetBone("Spine_0").GetTransform().AddWorldRotation(1.5f * cosWave);
+		}
+		if (m.HasBone("Spine_1"))
+		{
+		    m.GetBone("Spine_1").GetTransform().AddWorldRotation(1.5f * cosWave);
+		}
+		if (m.HasBone("Head"))
+		{
+		    m.GetBone("Head").GetTransform().AddWorldRotation(1.5f * cosWave);
+		}
+
+	    if (m.HasBone("Femoral_L"))
+		{
+			m.GetBone("Femoral_L").GetTransform().AddWorldRotation(1.f * cosWave);
+		}
+		if (m.HasBone("Knee_L"))
+		{
+		    m.GetBone("Knee_L").GetTransform().AddWorldRotation(1.5f * cosWave);
+		}
+		if (m.HasBone("Ankle_L"))
+		{
+		    m.GetBone("Ankle_L").GetTransform().AddWorldRotation(1.f * cosWave);
+		}
+
+		if (m.HasBone("Femoral_R"))
+		{
+			m.GetBone("Femoral_R").GetTransform().AddWorldRotation(1.f * -cosWave);
+		}
+		if (m.HasBone("Knee_R"))
+		{
+		    m.GetBone("Knee_R").GetTransform().AddWorldRotation(1.5f * -cosWave);
+		}
+		if (m.HasBone("Ankle_R"))
+		{
+		    m.GetBone("Ankle_R").GetTransform().AddWorldRotation(1.f * -cosWave);
+		}
+
+		if (m.HasBone("Pelvis"))
+		{
+		    m.GetBone("Pelvis").GetTransform().AddWorldPosition(Vector2::UnitY * sinWave);
+		}
+	}
 }
 
 // 렌더링 로직
@@ -61,7 +171,10 @@ void SoftRenderer::Render2D()
 	const auto& g = Get2DGameEngine();
 
 	// 격자 그리기
-	DrawGrid2D();
+	DrawGizmo2D();
+
+	// 전체 그릴 물체의 수
+	size_t totalObjectCount = g.GetScene().size();
 
 	// 카메라의 뷰 행렬
 	Matrix3x3 viewMatrix = g.GetMainCamera().GetViewMatrix();
@@ -77,15 +190,19 @@ void SoftRenderer::Render2D()
 		}
 
 		const Mesh& mesh = g.GetMesh(gameObject.GetMeshKey());
-		const Texture& texture = g.GetTexture(gameObject.GetTextureKey());
 		const TransformComponent& transform = gameObject.GetTransform();
 		Matrix3x3 finalMatrix = viewMatrix * transform.GetWorldMatrix();
-
-		DrawMesh2D(mesh, texture, finalMatrix, gameObject.GetColor());
+		DrawMesh2D(mesh, finalMatrix, gameObject.GetColor());
+		DrawBone2D(mesh, finalMatrix, LinearColor::Red);
+		
+		if (gameObject == PlayerGo)
+		{
+			r.PushStatisticText("Player Scale : " + std::to_string(transform.GetWorldScale().X));
+		}
 	}
 }
 
-void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTexture, const Matrix3x3& InMatrix, const LinearColor& InColor)
+void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Matrix3x3& InMatrix, const LinearColor& InColor)
 {
 	size_t vertexCount = InMesh.GetVertices().size();
 	size_t indexCount = InMesh.GetIndices().size();
@@ -97,6 +214,40 @@ void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTex
 	for (size_t vi = 0; vi < vertexCount; ++vi)
 	{
 		vertices[vi].Position = InMesh.GetVertices()[vi];
+
+		// 위치에 대해 스키닝 연산 수행
+		if (InMesh.IsSkinnedMesh())
+		{
+			Vector2 deltaPosition;
+			Weight w = InMesh.GetWeights()[vi];
+			for (size_t wi = 0; wi < InMesh.GetConnectedBones()[vi]; ++wi)
+			{
+				std::string boneName = w.Bones[wi];
+				if (InMesh.HasBone(boneName))
+				{
+					const Bone& bone = InMesh.GetBone(boneName);
+					const Transform2D& bindBoneTransform = bone.GetBindPose();
+					const Transform2D& boneTransform = bone.GetTransform().GetWorldTransform();
+
+					const float deltaRotation = boneTransform.GetRotation() - bindBoneTransform.GetRotation();
+					const Vector2 RelativeVertexPosition = vertices[vi].Position - bindBoneTransform.GetPosition();
+					Vector2 deltaVertexPosition = RelativeVertexPosition;
+					float cos = 0.f;
+					float sin = 0.f;
+					Math::GetSinCos(sin, cos, deltaRotation);
+					deltaVertexPosition = Vector2(
+						deltaVertexPosition.Dot(Vector2(cos, -sin)), 
+						deltaVertexPosition.Dot(Vector2(sin, cos)));
+					deltaVertexPosition -= RelativeVertexPosition;
+
+					deltaPosition += (boneTransform.GetPosition() - bindBoneTransform.GetPosition()) * w.Values[wi];
+					deltaPosition += deltaVertexPosition * w.Values[wi];
+				}
+			}
+
+			vertices[vi].Position += deltaPosition;
+		}
+
 		if (InMesh.HasColor())
 		{
 			vertices[vi].Color = InMesh.GetColors()[vi];
@@ -127,14 +278,15 @@ void SoftRenderer::DrawMesh2D(const class DD::Mesh& InMesh, const Texture& InTex
 	{
 		int bi0 = ti * 3, bi1 = ti * 3 + 1, bi2 = ti * 3 + 2;
 		std::vector<Vertex2D> tvs = { vertices[indice[bi0]] , vertices[indice[bi1]] , vertices[indice[bi2]] };
-		DrawTriangle2D(tvs, InTexture, InColor, fm);
+		DrawTriangle2D(tvs, InColor, fm);
 	}
 }
 
-void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const Texture& InTexture, const LinearColor& InColor, FillMode InFillMode)
+void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const LinearColor& InColor, FillMode InFillMode)
 {
 	auto& r = GetRenderer();
 	const GameEngine& g = Get2DGameEngine();
+	const Texture& texture = g.GetTexture(GameEngine::BaseTexture);
 
 	if (IsWireframeDrawing())
 	{
@@ -165,8 +317,8 @@ void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const T
 		float udotu = u.Dot(u);
 		float denominator = udotv * udotv - vdotv * udotu;
 
-		// 퇴화 삼각형 판정.
-		if (Math::EqualsInTolerance(denominator, 0.f))
+		// 퇴화 삼각형이면 그리기 생략
+		if (denominator == 0.f)
 		{
 			return;
 		}
@@ -199,8 +351,38 @@ void SoftRenderer::DrawTriangle2D(std::vector<DD::Vertex2D>& InVertices, const T
 				if (((s >= 0.f) && (s <= 1.f)) && ((t >= 0.f) && (t <= 1.f)) && ((oneMinusST >= 0.f) && (oneMinusST <= 1.f)))
 				{
 					Vector2 targetUV = InVertices[0].UV * oneMinusST + InVertices[1].UV * s + InVertices[2].UV * t;
-					r.DrawPoint(fragment, FragmentShader2D(InTexture.GetSample(targetUV), LinearColor::Gray));
+					r.DrawPoint(fragment, LinearColor::Black);
 				}
+			}
+		}
+	}
+}
+
+void SoftRenderer::DrawBone2D(const DD::Mesh& InMesh, const Matrix3x3& InMatrix, const LinearColor& InColor)
+{
+	auto& r = GetRenderer();
+
+	for (auto& bone : InMesh.GetBones())
+	{
+		if (bone.second.HasParent())
+		{
+	        Vector2 startPos = bone.second.GetTransform().GetWorldPosition();
+		    const Bone& parentBone = InMesh.GetBones().at(bone.second.GetParentName());
+			Vector2 endPos = parentBone.GetTransform().GetWorldPosition();
+
+			startPos = InMatrix * startPos;
+			endPos = InMatrix * endPos;
+
+			r.DrawLine(startPos, endPos, InColor);
+
+			// draw big point
+			for (int x = -2; x <= 2; ++x)
+			{
+			    for (int y = -2; y <= 2; ++y)
+			    {
+			        const Vector2 drawPoint(startPos.X + x, startPos.Y + y);
+					r.DrawPoint(drawPoint, LinearColor::Blue);
+			    }
 			}
 		}
 	}

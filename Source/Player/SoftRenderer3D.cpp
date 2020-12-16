@@ -4,14 +4,14 @@
 #include <random>
 using namespace CK::DDD;
 
-// 그리드 그리기
+// 기즈모 그리기
 void SoftRenderer::DrawGizmo3D()
 {
 	auto& r = GetRenderer();
 	const GameEngine& g = Get3DGameEngine();
 
 	// 뷰 기즈모 그리기
-	std::vector<Vertex3D> viewGizmo = { 
+	std::vector<Vertex3D> viewGizmo = {
 		Vertex3D(Vector4(Vector3::Zero)),
 		Vertex3D(Vector4(Vector3::UnitX * _GizmoUnitLength)),
 		Vertex3D(Vector4(Vector3::UnitY * _GizmoUnitLength)),
@@ -19,7 +19,6 @@ void SoftRenderer::DrawGizmo3D()
 	};
 
 	Matrix4x4 viewMatRotationOnly = g.GetMainCamera().GetViewMatrixRotationOnly();
-	Matrix4x4 pvMatrix = g.GetMainCamera().GetPerspectiveViewMatrix();
 	VertexShader3D(viewGizmo, viewMatRotationOnly);
 
 	// 축 그리기
@@ -30,18 +29,35 @@ void SoftRenderer::DrawGizmo3D()
 	r.DrawLine(v0, v1, LinearColor::Red);
 	r.DrawLine(v0, v2, LinearColor::Green);
 	r.DrawLine(v0, v3, LinearColor::Blue);
-
-	// 바닥 기즈모
-	DrawMode prevShowMode = GetDrawMode();
-	SetDrawMode(DrawMode::Wireframe);
-	{
-		static float planeScale = 100.f;
-		const Mesh& planeMesh = g.GetMesh(GameEngine::PlaneMesh);
-		Transform pt(Vector3::Zero, Quaternion::Identity, Vector3::One * planeScale);
-		DrawMesh3D(planeMesh, pvMatrix * pt.GetMatrix(), _WireframeColor);
-	}
-	SetDrawMode(prevShowMode);
 }
+
+// 게임 오브젝트 이름
+static const std::string PlayerGo("Player");
+
+// 씬 로딩
+void SoftRenderer::LoadScene3D()
+{
+	GameEngine& g = Get3DGameEngine();
+
+	// 플레이어
+	constexpr float quadScale = 100.f;
+
+	// 플레이어 설정
+	GameObject& goPlayer = g.CreateNewGameObject(PlayerGo);
+	goPlayer.SetMesh(GameEngine::QuadMesh);
+	goPlayer.GetTransform().SetWorldPosition(Vector3::Zero);
+	goPlayer.GetTransform().SetWorldScale(Vector3::One * quadScale);
+	goPlayer.SetColor(LinearColor::White);
+
+	// 카메라 설정
+	CameraObject& mainCamera = g.GetMainCamera();
+	mainCamera.GetTransform().SetWorldPosition(Vector3(0.f, 0.f, 400.f));
+	mainCamera.GetTransform().SetWorldRotation(Rotator(180.f, 0.f, 0.f));
+}
+
+// 실습을 위한 변수
+Vector3 leftBonePosition;
+Vector3 rightBonePosition;
 
 // 게임 로직
 void SoftRenderer::Update3D(float InDeltaSeconds)
@@ -49,84 +65,75 @@ void SoftRenderer::Update3D(float InDeltaSeconds)
 	// 기본 레퍼런스
 	GameEngine& g = Get3DGameEngine();
 	const InputManager& input = g.GetInputManager();
-	CameraObject& camera = g.GetMainCamera();
 
 	// 기본 설정 변수
+	static float duration = 3.f;
 	static float fovSpeed = 100.f;
-	static float rotateSpeed = 180.f;
-	static float moveSpeed = 500.f;
+	static float elapsedTime = 0.f;
 
-	// 게임 로직에서 사용할 게임 오브젝트 레퍼런스
-	GameObject& goPlayer = g.GetGameObject(GameEngine::PlayerGo);
-	GameObject& goCameraRig = g.GetGameObject(GameEngine::CameraRigGo);
+	// 애니메이션을 위한 커브 생성 ( 0~1 SineWave )
+	elapsedTime = Math::Clamp(elapsedTime + InDeltaSeconds, 0.f, duration);
+	if (elapsedTime == duration)
+	{
+		elapsedTime = 0.f;
+	}
+	float sinParam = elapsedTime * Math::TwoPI / duration;
+	float sinWave = (sinf(sinParam) + 1.f) * 0.5f;
 
-	goPlayer.GetTransform().AddLocalYawRotation(-input.GetAxis(InputAxis::XAxis) * rotateSpeed * InDeltaSeconds);
-	goPlayer.GetTransform().AddLocalPosition(goPlayer.GetTransform().GetLocalZ() * input.GetAxis(InputAxis::YAxis) * moveSpeed * InDeltaSeconds);
+	// 플레이어의 이동
+	GameObject& goPlayer = g.GetGameObject(PlayerGo);
+	Mesh& m = g.GetMesh(goPlayer.GetMeshKey());
+	if (m.IsSkinnedMesh())
+	{
+		const std::string leftBone("left");
+		const std::string rightBone("right");
 
-	// 카메라 화각 설정
-	float newFOV = Math::Clamp(camera.GetFOV() + input.GetAxis(InputAxis::ZAxis) * fovSpeed * InDeltaSeconds, 5.f, 179.f);
-	camera.SetFOV(newFOV);
+		if (m.HasBone(leftBone))
+		{
+			Transform& boneTransform = m.GetBone(leftBone).GetTransform();
+			boneTransform.SetPosition(Vector3::UnitX * -sinWave);
+			const Transform& bindPoseTransform = m.GetBindPose(leftBone);
+			leftBonePosition = bindPoseTransform.GetPosition() + boneTransform.GetPosition();
+		}
+
+		if (m.HasBone(rightBone))
+		{
+			Transform& boneTransform = m.GetBone(rightBone).GetTransform();
+			boneTransform.SetPosition(Vector3::UnitX * sinWave);
+			const Transform& bindPoseTransform = m.GetBindPose(rightBone);
+			rightBonePosition = bindPoseTransform.GetPosition() + boneTransform.GetPosition();
+		}
+	}
+
+	// 카메라 시야각 조절
+	CameraObject& camera = g.GetMainCamera();
+	float deltaFOV = input.GetAxis(InputAxis::WAxis) * fovSpeed * InDeltaSeconds;
+	camera.SetFOV(Math::Clamp(camera.GetFOV() + deltaFOV, 15.f, 150.f));
 }
 
 // 캐릭터 애니메이션 로직
 void SoftRenderer::LateUpdate3D(float InDeltaSeconds)
 {
-	// 기본 레퍼런스
-	GameEngine& g = Get3DGameEngine();
-
-	// 기본 설정 변수
-	static float elapsedTime = 0.f;
-	static float neckLength = 5.f;
-	static float armLegLength = 0.7f;
-	static float neckDegree = 15.f;
-	static float armLegDegree = 30.f;
-	elapsedTime += InDeltaSeconds;
-
-	// 애니메이션을 위한 커브 생성 
-	float armLegCurrent = Math::FMod(elapsedTime, armLegLength) * Math::TwoPI / armLegLength;
-	float neckCurrent = Math::FMod(elapsedTime, neckLength) * Math::TwoPI / neckLength;
-
-	float armLegCurve = sinf(armLegCurrent) * armLegDegree;
-	float neckCurve = sinf(neckCurrent) * neckDegree;
-
-	// 캐릭터 레퍼런스
-	GameObject& goPlayer = g.GetGameObject(GameEngine::PlayerGo);
-
-	// 캐릭터 메시
-	Mesh& m = g.GetMesh(goPlayer.GetMeshKey());
-
-	// 목의 회전
-	Bone& neckBone = m.GetBone(GameEngine::NeckBone);
-	neckBone.GetTransform().SetLocalRotation(Rotator(neckCurve, 0.f, 0.f));
-
-	// 팔의 회전
-	Bone& leftArmBone = m.GetBone(GameEngine::LeftArmBone);
-	leftArmBone.GetTransform().SetLocalRotation(Rotator(0.f, 0.f, armLegCurve));
-
-	Bone& rightArmBone = m.GetBone(GameEngine::RightArmBone);
-	rightArmBone.GetTransform().SetLocalRotation(Rotator(0.f, 0.f, -armLegCurve));
-
-	// 다리의 회전
-	Bone& leftLegBone = m.GetBone(GameEngine::LeftLegBone);
-	leftLegBone.GetTransform().SetLocalRotation(Rotator(0.f, 0.f, -armLegCurve));
-
-	Bone& rightLegBone = m.GetBone(GameEngine::RightLegBone);
-	rightLegBone.GetTransform().SetLocalRotation(Rotator(0.f, 0.f, armLegCurve));
+	return;
 }
 
 // 렌더링 로직
 void SoftRenderer::Render3D()
 {
 	const GameEngine& g = Get3DGameEngine();
+	auto& r = GetRenderer();
 
 	const CameraObject& mainCamera = g.GetMainCamera();
 	const Matrix4x4 pvMatrix = mainCamera.GetPerspectiveViewMatrix();
-	const ScreenPoint viewportSize = mainCamera.GetViewportSize();
-	float nearZ = mainCamera.GetNearZ();
-	float farZ = mainCamera.GetFarZ();
 
 	// 기즈모 그리기
 	DrawGizmo3D();
+
+	// 절두체 컬링 테스트를 위한 통계 변수
+	size_t totalObjects = g.GetScene().size();
+	size_t culledObjects = 0;
+	size_t intersectedObjects = 0;
+	size_t renderedObjects = 0;
 
 	for (auto it = g.SceneBegin(); it != g.SceneEnd(); ++it)
 	{
@@ -137,41 +144,49 @@ void SoftRenderer::Render3D()
 			continue;
 		}
 
-		// 렌더링 시작
-		const Mesh& mesh = g.GetMesh(gameObject.GetMeshKey());
-		// 스키닝이고 WireFrame인 경우 본을 그리기
-		if (mesh.IsSkinnedMesh() && IsWireframeDrawing())
-		{
-			const Mesh& boneMesh = g.GetMesh(GameEngine::ArrowMesh);
-			for (const auto& b : mesh.GetBones())
-			{
-				if (!b.second.HasParent())
-				{
-					continue;
-				}
-				const Bone& bone = b.second;
-				const Bone& parentBone = mesh.GetBone(bone.GetParentName());
-				const Transform& tGameObject = transform.GetWorldTransform();
-
-				// 모델링 공간에서의 본의 위치
-				const Transform& t1 = parentBone.GetTransform().GetWorldTransform();
-				const Transform& t2 = bone.GetTransform().GetWorldTransform();
-
-				// 게임 월드 공간에서의 본의 위치
-				const Transform& wt1 = t1.LocalToWorld(tGameObject);
-				const Transform& wt2 = t2.LocalToWorld(tGameObject);
-
-				Vector3 boneVector = wt2.GetPosition() - wt1.GetPosition();
-				Transform tboneObject(wt1.GetPosition(), Quaternion(boneVector), Vector3(10.f, 10.f, boneVector.Size()));
-				Matrix4x4 boneMatrix = pvMatrix * tboneObject.GetMatrix();
-				DrawMesh3D(boneMesh, boneMatrix, LinearColor::Red);
-			}
-		}
-
 		// 최종 변환 행렬
 		Matrix4x4 finalMatrix = pvMatrix * transform.GetWorldMatrix();
+
+		// 최종 변환 행렬로부터 평면의 방정식과 절두체 생성
+		Matrix4x4 finalTranposedMatrix = finalMatrix.Tranpose();
+		std::array<Plane, 6> frustumPlanesFromMatrix = {
+			Plane(-(finalTranposedMatrix[3] - finalTranposedMatrix[1])), // up
+			Plane(-(finalTranposedMatrix[3] + finalTranposedMatrix[1])), // bottom
+			Plane(-(finalTranposedMatrix[3] - finalTranposedMatrix[0])), // right
+			Plane(-(finalTranposedMatrix[3] + finalTranposedMatrix[0])), // left 
+			Plane(-(finalTranposedMatrix[3] - finalTranposedMatrix[2])),  // far
+			Plane(-(finalTranposedMatrix[3] + finalTranposedMatrix[2])), // near
+		};
+		Frustum frustumFromMatrix(frustumPlanesFromMatrix);
+
+		// 메시 정보 얻어오기
+		const Mesh& mesh = g.GetMesh(gameObject.GetMeshKey());
+
+		// 바운딩 영역은 로컬 정보를 그대로 사용
+		const Box& boxBound = mesh.GetBoxBound();
+
+		// 절두체에서 로컬 바운딩 정보로 판정
+		auto checkResult = frustumFromMatrix.CheckBound(boxBound);
+		if (checkResult == BoundCheckResult::Outside)
+		{
+			culledObjects++;
+			continue;
+		}
+		else if (checkResult == BoundCheckResult::Intersect)
+		{
+			// 겹친 게임 오브젝트를 통계에 포함
+			intersectedObjects++;
+		}
+
+		// 메시 그리기
 		DrawMesh3D(mesh, finalMatrix, gameObject.GetColor());
+
+		// 그린 물체를 통계에 포함
+		renderedObjects++;
 	}
+
+	r.PushStatisticText("Left Bone : " + leftBonePosition.ToString());
+	r.PushStatisticText("Right Bone : " + rightBonePosition.ToString());
 }
 
 void SoftRenderer::DrawMesh3D(const Mesh& InMesh, const Matrix4x4& InMatrix, const LinearColor& InColor)
@@ -187,38 +202,22 @@ void SoftRenderer::DrawMesh3D(const Mesh& InMesh, const Matrix4x4& InMatrix, con
 	{
 		vertices[vi].Position = Vector4(InMesh.GetVertices()[vi]);
 
-		//스켈레탈 메시면 스키닝 작업 수행
+		// 위치에 대해 스키닝 연산 수행
 		if (InMesh.IsSkinnedMesh())
 		{
-			Vector4 totalPosition = Vector4::Zero;
-			Weight w = InMesh.GetWeights()[vi];
+			Vector3 deltaPosition;
+			DDD::Weight w = InMesh.GetWeights()[vi];
 			for (size_t wi = 0; wi < InMesh.GetConnectedBones()[vi]; ++wi)
 			{
 				std::string boneName = w.Bones[wi];
 				if (InMesh.HasBone(boneName))
 				{
-					const Bone& b = InMesh.GetBone(boneName);
-					const Transform& t = b.GetTransform().GetWorldTransform();  // 월드 공간
-					const Transform& bindPose = b.GetBindPose(); // 월드 공간
-
-					// BindPose 공간을 중심으로 Bone의 로컬 공간을 계산
-					Transform boneLocal = t.WorldToLocal(bindPose);
-
-					// BindPose 공간으로 점을 변화
-					Vector3 localPosition = bindPose.Inverse().GetPosition() + vertices[vi].Position.ToVector3();
-
-					// BindPose 공간에서의 점의 최종 위치
-					Vector3 skinnedLocalPosition = boneLocal.GetMatrix() * localPosition;
-
-					// 월드 공간으로 다시 변경
-					Vector3 skinnedWorldPosition = bindPose.GetMatrix() * skinnedLocalPosition;
-
-					// 가중치를 곱해서 더해줌
-					totalPosition += Vector4(skinnedWorldPosition * w.Values[wi], true);
+					const Transform& boneTransform = InMesh.GetBone(boneName).GetTransform();
+					deltaPosition += boneTransform.GetPosition() * w.Values[wi];
 				}
 			}
 
-			vertices[vi].Position = totalPosition;
+			vertices[vi].Position += Vector4(deltaPosition, false);
 		}
 
 		if (InMesh.HasColor())
@@ -234,17 +233,6 @@ void SoftRenderer::DrawMesh3D(const Mesh& InMesh, const Matrix4x4& InMatrix, con
 
 	// 정점 변환 진행
 	VertexShader3D(vertices, InMatrix);
-
-	// 그리기모드 설정
-	FillMode fm = FillMode::None;
-	if (InMesh.HasColor())
-	{
-		fm |= FillMode::Color;
-	}
-	if (InMesh.HasUV())
-	{
-		fm |= FillMode::Texture;
-	}
 
 	// 삼각형 별로 그리기
 	for (int ti = 0; ti < triangleCount; ++ti)
@@ -274,7 +262,7 @@ void SoftRenderer::DrawMesh3D(const Mesh& InMesh, const Matrix4x4& InMatrix, con
 		{
 			size_t si = ti * 3;
 			std::vector<Vertex3D> sub(tvs.begin() + si, tvs.begin() + si + 3);
-			DrawTriangle3D(sub, InColor, fm);
+			DrawTriangle3D(sub, InColor, FillMode::Color);
 		}
 	}
 }
@@ -298,8 +286,10 @@ void SoftRenderer::DrawTriangle3D(std::vector<Vertex3D>& InVertices, const Linea
 	// 백페이스 컬링 ( 뒷면이면 그리기 생략 )
 	Vector3 edge1 = (InVertices[1].Position - InVertices[0].Position).ToVector3();
 	Vector3 edge2 = (InVertices[2].Position - InVertices[0].Position).ToVector3();
-	float z = edge1.Cross(edge2).Z;
-	if (z <= 0.f)
+	// 왼손 좌표계를 사용하므로 반대 방향으로 설정
+	Vector3 faceNormal = -edge1.Cross(edge2);
+	Vector3 viewDirection = Vector3::UnitZ;
+	if (faceNormal.Dot(viewDirection) >= 0.f)
 	{
 		return;
 	}
@@ -324,6 +314,8 @@ void SoftRenderer::DrawTriangle3D(std::vector<Vertex3D>& InVertices, const Linea
 	}
 	else
 	{
+		const Texture& mainTexture = g.GetTexture(GameEngine::BaseTexture);
+
 		// 삼각형 칠하기
 		// 삼각형의 영역 설정
 		Vector2 minPos(Math::Min3(InVertices[0].Position.X, InVertices[1].Position.X, InVertices[2].Position.X), Math::Min3(InVertices[0].Position.Y, InVertices[1].Position.Y, InVertices[2].Position.Y));
@@ -340,7 +332,7 @@ void SoftRenderer::DrawTriangle3D(std::vector<Vertex3D>& InVertices, const Linea
 		float denominator = udotv * udotv - vdotv * udotu;
 
 		// 퇴화 삼각형 판정.
-		if (Math::EqualsInTolerance(denominator, 0.f))
+		if (denominator == 0.f)
 		{
 			return;
 		}
@@ -389,12 +381,12 @@ void SoftRenderer::DrawTriangle3D(std::vector<Vertex3D>& InVertices, const Linea
 					float z = invZ0 * oneMinusST + invZ1 * s + invZ2 * t;
 					float invZ = 1.f / z;
 
-					float n = g.GetMainCamera().GetNearZ();
-					float f = g.GetMainCamera().GetFarZ();
+					// 깊이 버퍼 테스팅
 					float newDepth = (InVertices[0].Position.Z * oneMinusST * invZ0 + InVertices[1].Position.Z * s * invZ1 + InVertices[2].Position.Z * t * invZ2) * invZ;
 					float prevDepth = r.GetDepthBufferValue(fragment);
 					if (newDepth < prevDepth)
 					{
+						// 픽셀을 처리하기 전 깊이 값을 버퍼에 보관
 						r.SetDepthBufferValue(fragment, newDepth);
 					}
 					else
@@ -405,43 +397,24 @@ void SoftRenderer::DrawTriangle3D(std::vector<Vertex3D>& InVertices, const Linea
 
 					if (IsDepthBufferDrawing())
 					{
-						// 시각화를 위해 선형화된 흑백 값
-						float grayScale = (invZ - n) / (f - n);
+						float grayScale = (newDepth + 1.f) * 0.5f;
+						float n = g.GetMainCamera().GetNearZ();
+						float f = g.GetMainCamera().GetFarZ();
+
+						// 시각화를 위해 선형화된 흑백 값으로 변환
+						grayScale = (invZ - n) / (f - n);
 
 						// 뎁스 버퍼 그리기
 						r.DrawPoint(fragment, LinearColor::White * grayScale);
 					}
 					else
 					{
-						// 색상 파라미터가 설정 안된 경우에는 흰색을 사용
-						LinearColor paramColor = LinearColor::White;
-						if (InColor != LinearColor::Error)
-						{
-							paramColor = InColor;
-						}
-
-						// 버텍스 컬러 또는 텍스쳐 매핑으로 최종 보간된 색상
-						LinearColor fragmentColor = LinearColor::White;
-						if (InFillMode & FillMode::Color)
-						{
-							fragmentColor = (InVertices[0].Color * oneMinusST * invZ0 + InVertices[1].Color * s * invZ1 + InVertices[2].Color * t * invZ2) * invZ;
-						}
-
-						if (InFillMode & FillMode::Texture)
-						{
-							// 투영보정보간으로 보간한 해당 픽셀의 UV 값
-							Vector2 targetUV = (InVertices[0].UV * oneMinusST * invZ0 + InVertices[1].UV * s * invZ1 + InVertices[2].UV * t * invZ2) * invZ;
-
-							// 텍스쳐 매핑 진행
-							LinearColor textureColor = g.GetTexture(GameEngine::DiffuseTexture).GetSample(targetUV);
-							fragmentColor = fragmentColor * textureColor;
-						}
-
-						r.DrawPoint(fragment, FragmentShader3D(fragmentColor, paramColor));
+						// 최종 보정보간된 UV 좌표
+						Vector2 targetUV = (InVertices[0].UV * oneMinusST * invZ0 + InVertices[1].UV * s * invZ1 + InVertices[2].UV * t * invZ2) * invZ;
+						r.DrawPoint(fragment, FragmentShader3D(mainTexture.GetSample(targetUV), InColor));
 					}
 				}
 			}
 		}
 	}
 }
-

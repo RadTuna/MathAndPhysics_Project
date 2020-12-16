@@ -39,7 +39,7 @@ public:
 	FORCEINLINE CameraObject& GetMainCamera() { return _MainCamera; }
 	FORCEINLINE const CameraObject& GetMainCamera() const { return _MainCamera; }
 
-	// 메인 텍스쳐
+	// 메인 텍스처
 	FORCEINLINE const Texture& GetTexture(const std::size_t & InTextureKey) const { return *_Textures.at(InTextureKey).get(); }
 
 	// 본을 그리기 위한 목록
@@ -47,18 +47,15 @@ public:
 
 private:
 	bool LoadResources();
-	bool LoadScene();
 
-public: // 주요 키 값
+public: 
 	// 메시
 	static const std::size_t QuadMesh;
 	static const std::size_t CharacterMesh;
 
-	// 게임 오브젝트
-	static const std::string CharacterGo;
-
-	// 텍스쳐
-	static const std::size_t CharacterTexture;
+	// 텍스처
+	static const std::size_t BaseTexture;
+	static const std::string SteveTexturePath;
 
 private:
 	bool _IsInitialized = false;

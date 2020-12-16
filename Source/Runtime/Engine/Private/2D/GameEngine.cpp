@@ -7,15 +7,9 @@ using namespace CK::DD;
 const std::size_t GameEngine::QuadMesh = std::hash<std::string>()("SM_Quad");
 const std::size_t GameEngine::CharacterMesh = std::hash<std::string>()("SM_Character");
 
-// 게임 오브젝트
-const std::string GameEngine::CharacterGo("CharacterMesh");
-
-// 텍스쳐
-const std::size_t GameEngine::CharacterTexture = std::hash<std::string>()("SunTex");
-
-// 텍스쳐 경로
-constexpr char* CharacterTexturePath = "Water.png";
-
+// 텍스처
+const std::size_t GameEngine::BaseTexture = std::hash<std::string>()("Base");
+const std::string GameEngine::SteveTexturePath("Steve.png");
 
 struct GameObjectCompare
 {
@@ -56,52 +50,58 @@ bool GameEngine::Init()
 		return false;
 	}
 
-	if (!LoadScene())
-	{
-		return false;
-	}
-
 	_IsInitialized = true;
 	return true;
 }
 
 bool GameEngine::LoadResources()
 {
-	// 메시 데이터 로딩
 	{
+	    // 사각 메시
+	    static float halfSize = 0.5f;
 	    Mesh& quadMesh = CreateMesh(GameEngine::QuadMesh);
-
-	    constexpr float squareHalfSize = 0.5f;
-	    constexpr int vertexCount = 4;
-	    constexpr int triangleCount = 2;
-	    constexpr int indexCount = triangleCount * 3;
-
 	    auto& v = quadMesh.GetVertices();
 	    auto& i = quadMesh.GetIndices();
 	    auto& uv = quadMesh.GetUVs();
 
 	    v = {
-		    Vector2(-squareHalfSize, -squareHalfSize),
-		    Vector2(-squareHalfSize, squareHalfSize),
-		    Vector2(squareHalfSize, squareHalfSize),
-		    Vector2(squareHalfSize, -squareHalfSize)
-	    };
-
-	    uv = {
-		    Vector2(0.f, 0.f),
-		    Vector2(0.f, 1.f),
-		    Vector2(1.f, 1.f),
-		    Vector2(1.f, 0.f)
+		    Vector2(-1.f, -1.f) * halfSize, Vector2(-1.f, 1.f) * halfSize, Vector2(1.f, 1.f) * halfSize, Vector2(1.f, -1.f) * halfSize
 	    };
 
 	    i = {
 		    0, 2, 1, 0, 3, 2
 	    };
 
+	    uv = {
+		    Vector2(8.f, 48.f) / 64.f, Vector2(8.f, 56.f) / 64.f, Vector2(16.f, 56.f) / 64.f, Vector2(16.f, 48.f) / 64.f
+	    };
+
+	    // 스킨드 메시 설정
+	    quadMesh.SetMeshType(MeshType::Skinned);
+
+	    // 리깅 수행
+	    auto& bones = quadMesh.GetBones();
+	    auto& connectedBones = quadMesh.GetConnectedBones();
+	    auto& weights = quadMesh.GetWeights();
+
+	    bones = {
+		    {"left", Bone("left", Transform2D(Vector2(-1.f, 0.f) * halfSize))},
+		    {"right", Bone("right", Transform2D(Vector2(1.f, 0.f) * halfSize))}
+	    };
+	    connectedBones = { 1, 1, 1, 1 };
+	    weights = {
+		    { {"left"}, {1.f} },
+		    { {"left"}, {1.f} },
+		    { {"right"}, {1.f} },
+		    { {"right"}, {1.f} }
+	    };
+
+	    // 메시의 바운딩 볼륨 생성
 	    quadMesh.CalculateBounds();
 	}
 
 	{
+		// 캐릭터 메쉬
 	    Mesh& characterMesh = CreateMesh(GameEngine::CharacterMesh);
 
 	    constexpr int vertexCount = 31;
@@ -206,31 +206,119 @@ bool GameEngine::LoadResources()
 			28, 29, 30 // 19
 	    };
 
+	    // 스킨드 메시 설정
+	    characterMesh.SetMeshType(MeshType::Skinned);
+
+	    // 리깅 수행
+	    auto& bones = characterMesh.GetBones();
+	    auto& connectedBones = characterMesh.GetConnectedBones();
+	    auto& weights = characterMesh.GetWeights();
+
+		// 본 선언
+		bones = {
+		    { "Root", Bone("Root", Transform2D(Vector2::Zero, 0.f)) },
+		    { "Pelvis", Bone("Pelvis", Transform2D(Vector2(0.f, 70.f), 0.f)) },
+		    { "Spine_0", Bone("Spine_0", Transform2D(Vector2(0.f, 90.f), 0.f)) },
+		    { "Spine_1", Bone("Spine_1", Transform2D(Vector2(0.f, 110.f), 0.f)) },
+		    { "Head", Bone("Head", Transform2D(Vector2(0.f, 130.f), 0.f)) },
+			{ "Shoulder_L", Bone("Shoulder_L", Transform2D(Vector2(-20.f, 115.f), 0.f)) },
+		    { "Elbow_L", Bone("Elbow_L", Transform2D(Vector2(-45.f, 115.f), 0.f)) },
+		    { "Wrist_L", Bone("Wrist_L", Transform2D(Vector2(-70.f, 115.f), 0.f)) },
+		    { "Hand_L", Bone("Hand_L", Transform2D(Vector2(-80.f, 115.f), 0.f)) },
+			{ "Shoulder_R", Bone("Shoulder_R", Transform2D(Vector2(20.f, 115.f), 0.f)) },
+		    { "Elbow_R", Bone("Elbow_R", Transform2D(Vector2(45.f, 115.f), 0.f)) },
+		    { "Wrist_R", Bone("Wrist_R", Transform2D(Vector2(70.f, 115.f), 0.f)) },
+		    { "Hand_R", Bone("Hand_R", Transform2D(Vector2(80.f, 115.f), 0.f)) }, 
+			{ "Femoral_L", Bone("Femoral_L", Transform2D(Vector2(-15.f, 60.f), 0.f)) },
+		    { "Knee_L", Bone("Knee_L", Transform2D(Vector2(-15.f, 35.f), 0.f)) },
+		    { "Ankle_L", Bone("Ankle_L", Transform2D(Vector2(-15.f, 10.f), 0.f)) },
+		    { "Foot_L", Bone("Foot_L", Transform2D(Vector2(-15.f, 0.f), 0.f)) },
+			{ "Femoral_R", Bone("Femoral_R", Transform2D(Vector2(15.f, 60.f), 0.f)) }, 
+		    { "Knee_R", Bone("Knee_R", Transform2D(Vector2(15.f, 35.f), 0.f)) },
+		    { "Ankle_R", Bone("Ankle_R", Transform2D(Vector2(15.f, 10.f), 0.f)) },
+		    { "Foot_R",  Bone("Foot_R", Transform2D(Vector2(15.f, 0.f), 0.f)) } };
+	    connectedBones = {
+	        1, 1, 1, 2, // 4
+			1, 2, 2, 1, // 8
+			2, 2, 2, 1, // 12
+			1, 2, 1, 1, // 16
+			1, 1, 2, 1, // 20
+			1, 1, 1, 2, // 24
+			1, 1, 1, 1, // 28
+			2, 1, 1 };
+	    weights = {
+		    { {"Head"}, {1.f} }, { {"Head"}, {1.f} },
+	        { {"Head"}, {1.f} }, { {"Head", "Spine_1"}, {0.5f, 0.5f} },
+		    { {"Shoulder_L"}, {1.f} }, { {"Spine_0", "Spine_1"}, {0.5f, 0.5f} },
+	        { {"Spine_0", "Spine_1"}, {0.5f, 0.5f} }, { {"Shoulder_R"}, {1.f} },
+		    { {"Pelvis", "Spine_0"}, {0.5f, 0.5f} }, { {"Pelvis", "Femoral_L"}, {0.5f, 0.5f} },
+	        { {"Pelvis", "Femoral_R"}, {0.5f, 0.5f} }, { {"Knee_R"}, {1.f} },
+			{ {"Knee_R"}, {1.f} }, { {"Knee_R", "Ankle_R"}, {0.5f, 0.5f} },
+	        { {"Foot_R"}, {1.f} }, { {"Foot_R"}, {1.f} },
+			{ {"Knee_L"}, {1.f} }, { {"Knee_L"}, {1.f} },
+	        { {"Knee_L", "Ankle_L"}, {0.5f, 0.5f} }, { {"Foot_L"}, {1.f} },
+			{ {"Foot_L"}, {1.f} }, { {"Elbow_L"}, {1.f} },
+	        { {"Elbow_L"}, {1.f} }, { {"Elbow_L", "Wrist_L"}, {0.5f, 0.5f} },
+			{ {"Hand_L"}, {1.f} }, { {"Hand_L"}, {1.f} },
+	        { {"Elbow_R"}, {1.f} }, { {"Elbow_R"}, {1.f} },
+			{ {"Elbow_R", "Wrist_R"}, {0.5f, 0.5f} }, { {"Hand_R"}, {1.f} },
+	        { {"Hand_R"}, {1.f} } };
+
+		// 본 계층 구조 설정
+		Bone& Root = bones["Root"];
+		Bone& Pelvis = bones["Pelvis"];
+		Bone& Spine_0 = bones["Spine_0"];
+		Bone& Spine_1 = bones["Spine_1"];
+		Bone& Head = bones["Head"];
+		Bone& Shoulder_L = bones["Shoulder_L"];
+		Bone& Elbow_L = bones["Elbow_L"];
+		Bone& Wrist_L = bones["Wrist_L"];
+		Bone& Hand_L = bones["Hand_L"];
+		Bone& Shoulder_R = bones["Shoulder_R"];
+		Bone& Elbow_R = bones["Elbow_R"];
+		Bone& Wrist_R = bones["Wrist_R"];
+		Bone& Hand_R = bones["Hand_R"];
+		Bone& Femoral_L = bones["Femoral_L"];
+		Bone& Knee_L = bones["Knee_L"];
+		Bone& Ankle_L = bones["Ankle_L"];
+		Bone& Foot_L = bones["Foot_L"];
+		Bone& Femoral_R = bones["Femoral_R"];
+		Bone& Knee_R = bones["Knee_R"];
+		Bone& Ankle_R = bones["Ankle_R"];
+		Bone& Foot_R = bones["Foot_R"];
+
+		Foot_R.SetParent(Ankle_R);
+		Foot_L.SetParent(Ankle_L);
+		Ankle_R.SetParent(Knee_R);
+		Ankle_L.SetParent(Knee_L);
+		Knee_R.SetParent(Femoral_R);
+		Knee_L.SetParent(Femoral_L);
+		Femoral_R.SetParent(Pelvis);
+		Femoral_L.SetParent(Pelvis);
+
+		Hand_R.SetParent(Wrist_R);
+		Hand_L.SetParent(Wrist_L);
+		Wrist_R.SetParent(Elbow_R);
+		Wrist_L.SetParent(Elbow_L);
+		Elbow_R.SetParent(Shoulder_R);
+		Elbow_L.SetParent(Shoulder_L);
+		Shoulder_R.SetParent(Spine_1);
+		Shoulder_L.SetParent(Spine_1);
+
+		Head.SetParent(Spine_1);
+		Spine_1.SetParent(Spine_0);
+		Spine_0.SetParent(Pelvis);
+		Pelvis.SetParent(Root);
+
 	    characterMesh.CalculateBounds();
 	}
 
 	// 텍스쳐 로딩
-	if (!CreateTexture(GameEngine::CharacterTexture, CharacterTexturePath).IsIntialized())
-	{
-		return false;
-	}
+	Texture& diffuseTexture = CreateTexture(GameEngine::BaseTexture, GameEngine::SteveTexturePath);
+	assert(diffuseTexture.IsIntialized());
 
 	return true;
 }
-
-bool GameEngine::LoadScene()
-{
-	static const float characterScale = 2.f;
-
-	// CharacterMesh
-	GameObject& goCharacter = CreateNewGameObject(GameEngine::CharacterGo);
-	goCharacter.SetMesh(GameEngine::CharacterMesh);
-	goCharacter.GetTransform().SetWorldScale(Vector2::One * characterScale);
-	goCharacter.SetTexture(GameEngine::CharacterTexture);
-
-	return true;
-}
-
 
 Mesh& GameEngine::CreateMesh(const std::size_t& InKey)
 {
